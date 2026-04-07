@@ -1,0 +1,24 @@
+# Environment
+.env
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# ChromaDB (generated, 50MB+)
+02-Processed/chroma_db/
+
+# macOS
+.DS_Store
+
+# Node / Next.js
+demo/node_modules/
+demo/.next/
+demo/out/
+demo/*.tsbuildinfo
+demo/next-env.d.ts

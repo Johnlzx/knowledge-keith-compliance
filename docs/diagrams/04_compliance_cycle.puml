@@ -1,0 +1,80 @@
+@startuml
+!theme plain
+title RidgeField Capital - 合规监控计划 (CMP) 循环
+
+skinparam rectangle {
+    BackgroundColor<<daily>> #FFCCCC
+    BackgroundColor<<weekly>> #FFE0B2
+    BackgroundColor<<monthly>> #FFF9C4
+    BackgroundColor<<quarterly>> #C8E6C9
+    BackgroundColor<<semi>> #B3E5FC
+    BackgroundColor<<annual>> #D1C4E9
+}
+
+rectangle "每日任务 (Daily)" as daily <<daily>> {
+    card "CMP-001: 监控 AML 交易警报" as d1
+    card "CMP-002: 基本资本充足率检查\n(S$250K 最低要求)" as d2
+    card "CMP-003: IT 系统访问日志\n& 安全告警审查" as d3
+}
+
+rectangle "每周任务 (Weekly)" as weekly <<weekly>> {
+    card "CMP-004: 制裁名单筛查刷新" as w1
+    card "CMP-005: 个人账户交易审查" as w2
+    card "CMP-006: 财务资源 vs\n风险要求计算 (120%)" as w3
+}
+
+rectangle "每月任务 (Monthly)" as monthly <<monthly>> {
+    card "CMP-009: 全客户制裁名单全面筛查\n(MAS/OFAC/EU/UN)" as m1
+    card "CMP-010: AML 红旗综合审查" as m2
+    card "CMP-012: 投诉登记审查" as m3
+    card "CMP-016: 投资组合合规检查\n(投资授权/风险限额)" as m4
+    card "CMP-017: 流动性风险监控\n& 压力测试" as m5
+    card "CMP-015: 资本 & 财务资源对账" as m6
+}
+
+rectangle "每季度任务 (Quarterly)" as quarterly <<quarterly>> {
+    card "CMP-021: 提交 Forms 1&2\n财务报表 (via MASNET)" as q1
+    card "CMP-024: 合规报告提交董事会" as q2
+    card "CMP-025: 董事会会议\n(合规 & 风险议程)" as q3
+    card "CMP-029: 季度风险评估更新" as q4
+    card "CMP-030: AML/CFT 季度合规审查" as q5
+}
+
+rectangle "每半年任务 (Semi-Annual)" as semi <<semi>> {
+    card "CMP-032: 客户入职文件\n内部合规审查" as s1
+    card "CMP-033: 外包供应商\n合规审查" as s2
+    card "CMP-034: BCP 测试\n& 结果文档化" as s3
+    card "CMP-035: 高风险客户\nCDD 定期复审" as s4
+}
+
+rectangle "每年任务 (Annual)" as annual <<annual>> {
+    card "CMP-038: 企业级风险评估 (ERWA)" as a1
+    card "CMP-039: 内部审计\n(AML/IT/运营/合规)" as a2
+    card "CMP-041: VAPT 安全测试" as a3
+    card "CMP-042: 提交审计财报\n(Forms 1-6 via MASNET)" as a4
+    card "CMP-043: 无不当行为声明\n(via MAS-Tx)" as a5
+    card "CMP-046: 全面政策更新\n& 合规手册修订" as a6
+    card "CMP-047~049: 全员培训\n(AML/道德/PDPA/网安)" as a7
+}
+
+' 层级关系 - 从高频到低频
+daily -[hidden]down-> weekly
+weekly -[hidden]down-> monthly
+monthly -[hidden]down-> quarterly
+quarterly -[hidden]down-> semi
+semi -[hidden]down-> annual
+
+legend right
+    |= 频率 |= 任务数 |= 关键负责人 |
+    | <back:#FFCCCC> 每日 </back> | 3 项 | CO / Finance / Ops |
+    | <back:#FFE0B2> 每周 </back> | 3 项 | CO / Finance |
+    | <back:#FFF9C4> 每月 </back> | 12 项 | CO / PM / Finance |
+    | <back:#C8E6C9> 每季度 </back> | 11 项 | CO / Finance / Board |
+    | <back:#B3E5FC> 每半年 </back> | 6 项 | CO / Ops |
+    | <back:#D1C4E9> 每年 </back> | 12+ 项 | CO / IA / Auditor |
+    CO = 合规官, PM = 投资经理
+    Finance = 财务, Ops = 运营
+    IA = 内部审计, Board = 董事会
+endlegend
+
+@enduml

@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* ── CosX Design Tokens ─────────────────────────────────────────── */
+
+:root {
+  --color-bg: #ffffff;
+  --color-fg: #141414;
+  --color-fg-secondary: #737373;
+  --color-fg-tertiary: #a3a3a3;
+  --color-border: #e5e5e5;
+  --color-surface: #f5f5f5;
+  --color-surface-hover: #ebebeb;
+  --color-accent: #534ab7;
+  --color-accent-light: #6c63c7;
+  --color-bg-secondary: #fafafa;
+
+  --color-critical: #ef4444;
+  --color-critical-bg: rgba(239, 68, 68, 0.08);
+  --color-warning: #f59e0b;
+  --color-warning-bg: rgba(245, 158, 11, 0.08);
+  --color-pass: #10b981;
+  --color-pass-bg: rgba(16, 185, 129, 0.08);
+  --color-info: #3b82f6;
+  --color-info-bg: rgba(59, 130, 246, 0.08);
+
+  --nav-height: 56px;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "Space Mono", monospace;
+}
+
+.dark {
+  --color-bg: #0a0a0a;
+  --color-fg: #fafafa;
+  --color-fg-secondary: #a3a3a3;
+  --color-fg-tertiary: #737373;
+  --color-border: #262626;
+  --color-surface: #141414;
+  --color-surface-hover: #1a1a1a;
+  --color-accent: #534ab7;
+  --color-accent-light: #7c74d4;
+  --color-bg-secondary: #111111;
+
+  --color-critical-bg: rgba(239, 68, 68, 0.12);
+  --color-warning-bg: rgba(245, 158, 11, 0.12);
+  --color-pass-bg: rgba(16, 185, 129, 0.12);
+  --color-info-bg: rgba(59, 130, 246, 0.12);
+}
+
+/* ── Base ────────────────────────────────────────────────────────── */
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+/* ── Animations ──────────────────────────────────────────────────── */
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}

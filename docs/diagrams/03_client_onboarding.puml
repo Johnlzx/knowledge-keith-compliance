@@ -1,0 +1,92 @@
+@startuml
+!theme plain
+title RidgeField Capital - 客户入职流程 (Client Onboarding Workflow)
+
+|#E0FFE0|投资者|
+|#E0E8FF|客户经理 (RM)|
+|#FFE8D0|合规官 (CO)|
+|#FFF0C0|运营部门|
+|#E8E0FF|法律团队|
+
+|投资者|
+start
+:提交投资意向\n填写投资者资料表;
+note right: T+0
+
+|客户经理 (RM)|
+:初步资格筛选\n确认为合格/机构投资者;
+
+|合规官 (CO)|
+:合格投资者评估 & 确认\n签署 AI Declaration Form\n(SFA Schedule);
+note right: T+1
+
+|运营部门|
+:收集 KYC 文件\n- 护照/身份证\n- 地址证明\n- 财富来源声明;
+note right: T+1 ~ T+3
+
+|合规官 (CO)|
+:AML/CFT 筛查\n- MAS 制裁名单\n- OFAC / UN / EU 名单\n- PEP (政治敏感人物) 筛查;
+note right: T+3
+
+if (筛查通过?) then (通过)
+else (命中/可疑)
+    :升级审查\n提交 STR 可疑交易报告\n(如需要);
+    stop
+endif
+
+:客户尽职调查 (CDD)\n- 填写 CDD 表格\n- 风险评级\n(高/中/低);
+note right: T+3 ~ T+5
+
+|客户经理 (RM)|
+:投资适合性评估\n- 风险承受能力问卷\n- 投资目标评估;
+note right: T+5
+
+|合规官 (CO)|
+if (风险评级可接受?) then (可接受)
+else (超出风险偏好)
+    :拒绝入职 或\n要求额外信息;
+    stop
+endif
+
+|法律团队|
+:准备法律文件\n- 投资管理协议 (IMA)\n- 全权委托授权书\n- 费用表;
+note right: T+5 ~ T+7
+
+|投资者|
+:签署法律文件;
+
+|合规官 (CO)|
+:最终合规审查 & 签字\n核对所有文件完整性;
+note right: T+7
+
+|运营部门|
+:账户激活 & 系统设置\n- CRM 录入客户记录\n- PMS 账户创建;
+note right: T+8
+
+|客户经理 (RM)|
+:发送欢迎函\n(CEO 签署)\n提供投资者门户访问;
+note right: T+10
+
+|合规官 (CO)|
+:持续监控\n- 年度 CDD 更新\n- 定期投资组合审查;
+note right: 持续进行 (年度)
+
+|投资者|
+stop
+
+legend right
+    |= 阶段 |= 时间 |
+    | 初步接触 | T+0 |
+    | 资格确认 | T+1 |
+    | KYC 收集 | T+1 ~ T+3 |
+    | AML 筛查 | T+3 |
+    | CDD 调查 | T+3 ~ T+5 |
+    | 适合性评估 | T+5 |
+    | 法律文件 | T+5 ~ T+7 |
+    | 合规签字 | T+7 |
+    | 账户激活 | T+8 |
+    | 欢迎沟通 | T+10 |
+    | 持续审查 | 年度 |
+endlegend
+
+@enduml

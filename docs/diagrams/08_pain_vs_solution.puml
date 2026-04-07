@@ -1,0 +1,47 @@
+@startuml
+title Keith Compliance Team - Pain Points vs CosX Solution
+
+left to right direction
+
+skinparam card {
+    BackgroundColor white
+    BorderColor #333333
+}
+
+rectangle "Current Pain Points" as PAIN #FFCCCC {
+    card "Pain 1: Search Regulations\n30-60 min per question\nManual search through\nhundreds of pages" as P1
+    card "Pain 2: Review Materials\n2-4 hours per factsheet\nManual line-by-line check\nagainst regulation rules" as P2
+    card "Pain 3: Track Revisions\nManual comparison of\nold vs new regulation\nversions" as P3
+    card "Pain 4: Draft Compliance Text\nStart from scratch or\nold templates each time" as P4
+    card "Pain 5: Prove Compliance\nNo structured audit trail\nEmail/verbal confirmations\nonly" as P5
+}
+
+rectangle "CosX Agent Solution" as SOL #C8E6C9 {
+    card "Phase 1: Compliance Q&A\n< 15 sec per answer\nPrecise regulation citations\nCross-reference support" as S1
+    card "Phase 2: Auto Review\n5 min initial scan\n+ 30 min human review\nStructured report output" as S2
+    card "Future: Version Tracking\nAutomatic diff detection\nImpact analysis on\nexisting documents" as S3
+    card "Future: Draft Assistant\nGenerate compliant text\nbased on regulation\nrequirements" as S4
+    card "Built-in: Audit Trail\nEvery review produces\na timestamped report\nMAS inspection ready" as S5
+}
+
+P1 -[#008000,bold]-> S1 : "POC Phase 1\n(Apr demo)"
+P2 -[#008000,bold]-> S2 : "POC Phase 2\n(Pilot)"
+P3 -[#999999,dashed]-> S3 : "Future"
+P4 -[#999999,dashed]-> S4 : "Future"
+P5 -[#008000]-> S5 : "Built-in"
+
+note bottom of PAIN
+    1 part-time CO
+    49+ CMP tasks
+    4 regulation sets
+    = Unsustainable workload
+end note
+
+note bottom of SOL
+    80-90% time saving
+    on material review
+    95%+ citation accuracy
+    Full audit trail
+end note
+
+@enduml

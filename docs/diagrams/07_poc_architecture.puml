@@ -1,0 +1,77 @@
+@startuml
+title CosX Compliance Agent - POC Architecture
+
+skinparam rectangle {
+    BackgroundColor white
+    BorderColor #333333
+}
+
+actor "Compliance\nOfficer" as CO
+actor "Investment\nManager" as PM
+
+rectangle "Input Layer" {
+    usecase "Compliance\nQuestion" as Q
+    usecase "Upload\nFactsheet PDF" as U
+}
+
+rectangle "Knowledge Base (RAG)" {
+    database "Vector DB" as VDB
+    card "Code on CIS\n(2025.11 Rev)\n~300-500 pages" as CIS
+    card "SFA Offers\nof Investment\n~100 pages" as SFA
+    card "MAS Pointers\non CIS\n~30-50 pages" as MP
+    card "IMAS Code\nBest Practices\n~50-80 pages" as IMAS
+}
+
+rectangle "Reasoning Layer" {
+    card "Claude LLM\n+ Retrieval" as LLM
+    card "Compliance\nQ&A Engine" as QA
+    card "Document\nReview Engine" as DR
+}
+
+rectangle "Output Layer" {
+    card "Answer with\nRegulation Citations" as ANS
+    card "Structured\nReview Report\nCritical/Warning/Pass" as RPT
+}
+
+CO --> Q
+CO --> U
+PM --> Q
+
+Q --> LLM
+U --> DR
+
+CIS --> VDB
+SFA --> VDB
+MP --> VDB
+IMAS --> VDB
+
+VDB --> LLM
+LLM --> QA
+LLM --> DR
+
+QA --> ANS
+DR --> RPT
+
+ANS --> CO
+RPT --> CO
+
+note right of VDB
+    Chunking Strategy:
+    Split by Section/Paragraph
+    Preserve hierarchy
+    Tag with metadata:
+    - Regulation name
+    - Section number
+    - Revision date
+end note
+
+note right of RPT
+    Review Output:
+    [C-01] Critical: Missing disclaimer
+    Rule: Code on CIS, App 1, S2.1
+    [W-01] Warning: Fee incomplete
+    Rule: Code on CIS, S8.2
+    [P-01] Passed: Risk statement OK
+end note
+
+@enduml

@@ -1,0 +1,108 @@
+@startuml
+title RidgeField Capital - Fund Operations Flow
+
+skinparam ActivityBackgroundColor white
+skinparam ActivityBorderColor #333333
+
+|PM|
+start
+:Generate investment decision;
+
+|CO|
+:Pre-trade compliance check\n- Mandate limits\n- Concentration limits\n- Restricted list\n- Best execution;
+
+if (Compliance\npassed?) then (Yes)
+  :Approve trade;
+else (No)
+  :Block trade\nand log reason;
+  kill
+endif
+
+|PM|
+:Execute trade order;
+:Trade confirmation\nand allocation;
+
+|CO|
+:Same-day trade reporting\nto compliance log;
+
+|Ops|
+:Process trade settlement\n(standard T+2 cycle);
+
+|Custodian|
+:Asset delivery and safekeeping\n- Securities credited\n- Funds transferred;
+
+|Ops|
+:Daily custodian reconciliation;
+
+if (Reconciliation\nmatched?) then (Yes)
+  :Proceed;
+else (No)
+  :Failed trade escalation\nInvestigate and resolve;
+endif
+
+:Cash management\nand margin monitoring;
+
+|FA|
+:Independent NAV calculation\n(monthly minimum)\nListed: Mark-to-Market\nUnlisted: Fair Value;
+
+|CO|
+:NAV sign-off\nbefore distribution;
+
+if (Pricing error\nexceeds 0.5%?) then (Yes)
+  :Flag as material error\nReport to Board;
+else (No)
+  :NAV approved;
+endif
+
+|Ops|
+:Monthly: Portfolio statement\nand NAV report;
+:Quarterly: Performance report\nwith attribution and risk;
+:Annually: Audited financial\nstatements and tax;
+
+|CO|
+:Quarterly: Forms 1 and 2\nvia MASNET;
+:Annually: Forms 1-6\nvia MASNET;
+:Annually: No Misconduct\ndeclaration via MAS-Tx;
+
+|PM|
+:Receive redemption request;
+
+|FA|
+:Calculate redemption NAV\nat month-end;
+
+|Ops|
+:Wire redemption proceeds\n(within T+15 business days);
+
+|CO|
+if (Single-day net\nredemption exceeds 5%?) then (Yes)
+  :Report to MAS by T+1;
+else (No)
+  :No reporting required;
+endif
+
+if (Full redemption?) then (Yes)
+  :Final AML check\nAccount closure\nArchive docs 5 years;
+else (Partial)
+  :Account remains active\nUpdate holdings;
+endif
+
+stop
+
+legend right
+  **Abbreviations**
+  ----
+  PM = Portfolio Manager (investment decisions)
+  CO = Compliance Officer (regulatory oversight)
+  Ops = Operations (settlement and admin)
+  FA = Fund Administrator (independent NAV calc)
+  Custodian = Custodian Bank (asset safekeeping)
+  ----
+  NAV = Net Asset Value
+  AML = Anti-Money Laundering
+  T+2 = Trade date + 2 business days
+  T+15 = Trade date + 15 business days
+  MASNET = MAS electronic submission portal
+  MAS-Tx = MAS transaction platform
+endlegend
+
+@enduml

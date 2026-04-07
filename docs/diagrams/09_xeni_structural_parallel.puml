@@ -1,0 +1,54 @@
+@startuml
+title CosX Strategic Narrative - XENI and Keith Agent Structural Parallel
+
+skinparam rectangle {
+    BackgroundColor white
+    BorderColor #333333
+}
+
+rectangle "XENI (Immigration Law)" as XENI #E0E8FF {
+    card "Knowledge Base:\nUKVI Rules\nImmigration Rules\nAppendix FM" as XK
+    card "Input:\nVisa Application\nSupporting Documents" as XI
+    card "Agent Logic:\nRequirement Matching\nDocument Validation\nEligibility Check" as XA
+    card "Output:\nStructured Review\nChecklist Report\nMissing Items" as XO
+
+    XK -[hidden]down-> XI
+    XI -[hidden]down-> XA
+    XA -[hidden]down-> XO
+}
+
+rectangle "Keith Agent (Fund Compliance)" as KEITH #E0FFE0 {
+    card "Knowledge Base:\nCode on CIS\nSFA\nMAS Pointers\nIMAS Code" as KK
+    card "Input:\nCompliance Question\nFund Factsheet\nPitch Deck" as KI
+    card "Agent Logic:\nRegulation Retrieval\nRule Matching\nGap Detection" as KA
+    card "Output:\nCited Answer\nCompliance Report\nCritical/Warning/Pass" as KO
+
+    KK -[hidden]down-> KI
+    KI -[hidden]down-> KA
+    KA -[hidden]down-> KO
+}
+
+XK -[#0000FF,bold,dashed]right-> KK : "Same pattern:\nStructured\nregulatory rules"
+XI -[#0000FF,bold,dashed]right-> KI : "Same pattern:\nBusiness documents\nfor review"
+XA -[#0000FF,bold,dashed]right-> KA : "Same pattern:\nRule-based\nvalidation"
+XO -[#0000FF,bold,dashed]right-> KO : "Same pattern:\nStructured\nreview output"
+
+rectangle "CosX Platform (Agent OS for Regulated Industries)" as COSX #FFF0C0 {
+    card "Tier 1: Immigration\n(XENI - Validated)" as T1
+    card "Tier 2: Fund Compliance\n(Keith - POC in progress)" as T2
+    card "Tier 3: All Regulated Services\n(HK SFC / UK FCA / AU ASIC)" as T3
+
+    T1 -right-> T2 : "Expand"
+    T2 -right-> T3 : "Replicate"
+}
+
+XENI -down-> T1
+KEITH -down-> T2
+
+note bottom of COSX
+    Core thesis validated:
+    Same framework, different regulation set
+    = Cross-industry, cross-jurisdiction scalability
+end note
+
+@enduml

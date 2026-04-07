@@ -1,0 +1,89 @@
+@startuml
+!theme plain
+title RidgeField Capital - 治理架构与三道防线模型
+
+skinparam rectangle {
+    BackgroundColor<<line1>> #C8E6C9
+    BackgroundColor<<line2>> #FFF9C4
+    BackgroundColor<<line3>> #FFCCCC
+    BackgroundColor<<external>> #E0E0E0
+    BackgroundColor<<board>> #E0E8FF
+}
+
+rectangle "董事会 (Board of Directors)" as board <<board>> {
+    card "最终监督: 战略/风险偏好/合规" as board_role
+    card "最少 2 名董事\n(至少 1 名独立董事)" as board_comp
+    card "每季度至少开 1 次董事会" as board_freq
+}
+
+rectangle "CEO / Principal Officer\n(MAS 审批)" as ceo <<board>> {
+    card "整体管理责任\n& 监管问责" as ceo_role
+}
+
+board -[#0000FF,bold]down-> ceo : "汇报"
+
+rectangle "第一道防线: 业务部门\n(拥有并管理风险)" as line1 <<line1>> {
+    rectangle "投资团队" as invest {
+        card "投资组合管理\n交易决策 & 执行" as invest_role
+        card "最少 2 名持牌代表\n(通过 CMFAS Module 6A)" as invest_req
+    }
+    rectangle "运营 & 客服" as ops {
+        card "客户入职/服务\n供应商管理/行政" as ops_role
+    }
+}
+
+rectangle "第二道防线: 合规部门\n(监督/监控/指导)" as line2 <<line2>> {
+    rectangle "合规官 (CO)" as co {
+        card "日常合规监督" as co1
+        card "合规监控计划 (CMP) 执行" as co2
+        card "MAS 联络人" as co3
+        card "董事会合规汇报" as co4
+        card "政策制定 & 培训" as co5
+    }
+    note right of co
+        初期: 兼职 2-4天/月
+        必须满足 MAS
+        Fit & Proper 标准
+    end note
+}
+
+rectangle "第三道防线: 独立审计\n(独立保障)" as line3 <<line3>> {
+    rectangle "内部审计" as ia {
+        card "年度审计:\nAML/CFT、运营控制\nIT 控制、合规" as ia_role
+    }
+    rectangle "外部审计师\n(MAS 审批)" as ea {
+        card "法定财务审计\n(Forms 1-6)" as ea_role
+    }
+}
+
+rectangle "外部监管 & 检查" as external <<external>> {
+    card "MAS 现场检查\n(牌照批准后 6-12月内)" as mas_inspect
+    card "MAS 非现场监控\n(MASNET 报告审查)" as mas_offsite
+}
+
+ceo -[#008000,bold]down-> line1
+ceo -[#CC8800,bold]down-> line2
+
+line1 -[#CC8800]right-> line2 : "第二道防线\n监督第一道"
+line2 -[#FF0000]right-> line3 : "第三道防线\n审计前两道"
+
+line2 -[#0000FF]up-> board : "季度合规报告"
+line3 -[#FF0000]up-> board : "审计发现 & 整改计划"
+
+external -[#FF0000,bold]down-> board : "监管检查"
+external -[#FF0000,bold]down-> line2 : "监管要求"
+
+legend right
+    **三道防线模型**
+    ====
+    <back:#C8E6C9> 第一道 </back> 业务部门自己管理风险
+    按照政策和 SOP 操作
+    ----
+    <back:#FFF9C4> 第二道 </back> 合规官独立监督
+    确保第一道防线在守规矩
+    ----
+    <back:#FFCCCC> 第三道 </back> 内/外部审计独立检查
+    为董事会提供独立保障
+endlegend
+
+@enduml

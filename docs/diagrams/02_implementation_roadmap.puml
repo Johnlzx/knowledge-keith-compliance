@@ -1,0 +1,37 @@
+@startgantt
+title RidgeField Capital - 3 Phase Implementation Roadmap (Apr - Dec 2026)
+
+projectscale monthly
+Project starts 2026-04-01
+
+-- Phase 1: Compliance Foundation (Apr-Jun) --
+[Inject base capital S$250K] lasts 15 days
+[Submit Form 1 CMS licence] lasts 15 days
+[Submit Form 11 Director approval] lasts 30 days
+[Hire Compliance Officer] lasts 45 days
+[AML/CFT policy and KYC/CDD procedures] lasts 45 days
+[Compliance Manual Board approval] lasts 30 days and starts 2026-05-01
+[Finalise remaining policies] lasts 60 days and starts 2026-05-01
+[CRM/PMS vendor evaluation] lasts 90 days
+[MAS licence IPA target] happens 2026-05-01
+
+-- Phase 2: Systems and First Client (Jul-Sep) --
+[CRM/KYC system deployment] lasts 30 days and starts 2026-07-01
+[PMS/Fund Admin system go-live] lasts 60 days and starts 2026-07-01
+[IT infrastructure hardening] lasts 60 days and starts 2026-07-01
+[Client onboarding process live] lasts 60 days and starts 2026-08-01
+[First client onboarding completed] lasts 30 days and starts 2026-09-01
+[Submit Q2 financial returns] happens 2026-07-14
+[Register first representatives] lasts 30 days and starts 2026-08-01
+[Staff compliance training] lasts 60 days and starts 2026-08-01
+
+-- Phase 3: Audit and Full Operations (Oct-Dec) --
+[Internal audit AML/CFT/IT/Ops] lasts 60 days and starts 2026-10-01
+[VAPT security testing] lasts 30 days and starts 2026-10-01
+[MAS onsite inspection prep] lasts 60 days and starts 2026-10-01
+[Submit Q3 financial returns] happens 2026-10-14
+[FY2026 external audit fieldwork] lasts 90 days and starts 2026-10-01
+[Submit audited returns Forms 1-6] happens 2027-05-31
+[Submit No Misconduct declaration] happens 2027-01-14
+
+@endgantt

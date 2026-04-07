@@ -1,0 +1,73 @@
+@startuml
+!theme plain
+title RidgeField Capital - 业务生态全景图
+
+skinparam rectangle {
+    BackgroundColor<<regulator>> #FFE0E0
+    BackgroundColor<<company>> #E0E8FF
+    BackgroundColor<<client>> #E0FFE0
+    BackgroundColor<<partner>> #FFF5E0
+    BackgroundColor<<market>> #F0E0FF
+}
+
+rectangle "新加坡金融管理局 (MAS)" as MAS <<regulator>> {
+    card "颁发 LFMC 牌照" as license
+    card "制定法规 (SFA/Notices)" as rules
+    card "定期检查 & 执法" as inspect
+}
+
+rectangle "RidgeField Capital Pte. Ltd." as RC <<company>> {
+    card "基金管理\n(投资决策 & 执行)" as fm
+    card "合规部门\n(CO 合规官)" as compliance
+    card "运营部门\n(客户服务 & 行政)" as ops
+    card "CEO / 董事会" as board
+}
+
+rectangle "投资者 (Clients)" as clients <<client>> {
+    card "合格投资者\n(个人净资产 > S$2M)" as ai
+    card "机构投资者\n(银行/保险/养老金)" as ii
+}
+
+rectangle "服务合作方" as partners <<partner>> {
+    card "基金管理员\n(NAV 计算/账务)" as fa
+    card "托管行\n(资产保管)" as custodian
+    card "外部审计师\n(年度财务审计)" as auditor
+    card "法律顾问\n(法律文件/牌照申请)" as legal
+    card "IT 供应商\n(CRM/PMS/AML筛查)" as it
+}
+
+rectangle "金融市场" as markets <<market>> {
+    card "股票市场" as equity
+    card "债券市场" as bond
+    card "另类投资\n(太阳能/可再生能源)" as alt
+}
+
+' 监管关系
+MAS -[#FF0000,bold]-> RC : "监管 & 牌照审批"
+RC -[#FF0000]-> MAS : "定期报告\n(Forms 1-6, MASNET)"
+
+' 客户关系
+clients -[#008000,bold]-> RC : "投资资金"
+RC -[#008000]-> clients : "投资回报\n+ 定期报告"
+
+' 合作方关系
+RC <-[#CC8800]-> fa : "基金运营外包"
+RC <-[#CC8800]-> custodian : "资产托管"
+RC <-[#CC8800]-> auditor : "年度审计"
+RC <-[#CC8800]-> legal : "法律服务"
+RC <-[#CC8800]-> it : "技术系统"
+
+' 市场关系
+RC -[#8000FF,bold]-> markets : "投资交易"
+markets -[#8000FF]-> RC : "投资收益/损失"
+
+legend right
+    |= 颜色 |= 含义 |
+    | <back:#FFE0E0>   </back> | 监管机构 |
+    | <back:#E0E8FF>   </back> | RidgeField Capital |
+    | <back:#E0FFE0>   </back> | 投资者客户 |
+    | <back:#FFF5E0>   </back> | 服务合作方 |
+    | <back:#F0E0FF>   </back> | 金融市场 |
+endlegend
+
+@enduml
