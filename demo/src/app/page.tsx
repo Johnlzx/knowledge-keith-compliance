@@ -1409,7 +1409,7 @@ function ChatMessage({
 
 
 
-const RAG_API_URL = process.env.NEXT_PUBLIC_RAG_API_URL || "http://localhost:8000";
+const RAG_API_URL = process.env.NEXT_PUBLIC_RAG_API_URL || "https://knowledge-keith-compliance-production-6be6.up.railway.app";
 
 // ── Main page ───────────────────────────────────────────────────────
 export default function ComplianceDemoPage() {
