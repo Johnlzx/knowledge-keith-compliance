@@ -6,9 +6,16 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+import os
+
 from rag.chain import ask
-from rag.config import CHROMA_PERSIST_DIR, RAW_REGULATIONS_DIR
+from rag.config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, CHROMA_PERSIST_DIR, RAW_REGULATIONS_DIR
 from rag.retriever import get_vectorstore
+
+# Startup diagnostics
+print(f"[DIAG] ANTHROPIC_API_KEY set: {bool(ANTHROPIC_API_KEY)} (len={len(ANTHROPIC_API_KEY)})")
+print(f"[DIAG] ANTHROPIC_BASE_URL: {ANTHROPIC_BASE_URL}")
+print(f"[DIAG] os.environ ANTHROPIC_API_KEY: {bool(os.environ.get('ANTHROPIC_API_KEY'))}")
 
 app = FastAPI(
     title="MAS Compliance RAG API",
