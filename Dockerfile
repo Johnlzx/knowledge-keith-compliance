@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code and regulation PDFs
 COPY rag/ rag/
-COPY run_ingest.py run_api.py ./
+COPY run_ingest.py run_api.py .env.example ./
 COPY 01-Raw-Regulations/ 01-Raw-Regulations/
 
 # Run ingestion at build time (bakes vector DB into image)
