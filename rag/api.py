@@ -6,13 +6,14 @@ import os
 import uuid
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from rag.chain import ask
 from rag.config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, CHROMA_PERSIST_DIR, RAW_REGULATIONS_DIR
 from rag.retriever import get_vectorstore
+from rag.review import extract_pdf, review_document
 from rag import database as db
 
 # Startup diagnostics
@@ -205,6 +206,136 @@ def delete_conversation(conv_id: str):
     if not db.delete_conversation(conv_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
     return {"ok": True}
+
+
+# ── Document Review ──────────────────────────────────────────────────
+
+@app.post("/api/compliance/review")
+async def compliance_review(
+    file: UploadFile = File(...),
+    conversation_id: Optional[str] = Form(None),
+):
+    """Upload a PDF and run compliance review against MAS regulations."""
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
+
+    if not CHROMA_PERSIST_DIR.exists():
+        raise HTTPException(status_code=503, detail="Vector database not initialized.")
+
+    file_bytes = await file.read()
+    file_size = len(file_bytes)
+
+    # Extract text from PDF
+    doc = extract_pdf(file_bytes)
+
+    # Load conversation history if available
+    history = None
+    if conversation_id:
+        history = db.get_history_for_llm(conversation_id)
+        # Persist user upload message
+        db.add_message(conversation_id, "user", [{
+            "type": "attachment",
+            "attachment": {
+                "filename": file.filename,
+                "filesize": f"{file_size / 1024:.0f} KB",
+                "filetype": "pdf",
+                "status": "uploaded",
+            },
+        }])
+
+    # Run review
+    result = review_document(doc["full_text"], doc["page_count"], conversation_history=history)
+
+    # Build thinking steps from retrieved sources
+    thinking_steps = []
+    seen_sources = set()
+    for src in result.get("retrieved_sources", []):
+        source_name = src["source"]
+        if source_name not in seen_sources:
+            seen_sources.add(source_name)
+            thinking_steps.append({"icon": "search", "text": f"Checked {source_name}"})
+    thinking_steps.append({"icon": "analyze", "text": "Cross-referencing compliance rules against document content"})
+
+    # Count findings by severity
+    findings = result.get("findings", [])
+    n_critical = sum(1 for f in findings if f.get("severity") == "critical")
+    n_warning = sum(1 for f in findings if f.get("severity") == "warning")
+    n_pass = sum(1 for f in findings if f.get("severity") == "pass")
+
+    # Build blocks
+    blocks = []
+
+    # Thinking
+    blocks.append({
+        "type": "thinking",
+        "thinking": {
+            "title": f"Reviewing {file.filename} ({doc['page_count']} pages)",
+            "description": f"Checking against {len(seen_sources)} regulatory sources across 9 compliance dimensions.",
+            "steps": thinking_steps,
+        },
+    })
+
+    # Report progress
+    blocks.append({
+        "type": "report-progress",
+        "reportProgress": {
+            "title": "Compliance Review",
+            "steps": [
+                {"label": "Document extraction", "status": "done", "detail": f"{doc['page_count']} pages"},
+                {"label": "Regulatory matching", "status": "done", "detail": f"{len(seen_sources)} sources"},
+                {"label": "Compliance analysis", "status": "done", "detail": f"{n_critical} critical, {n_warning} warnings"},
+                {"label": "Report generation", "status": "done"},
+            ],
+        },
+    })
+
+    # Summary
+    summary = result.get("summary", "Review completed.")
+    blocks.append({"type": "text", "content": summary})
+
+    # Findings heading
+    if findings:
+        blocks.append({"type": "heading", "content": "Compliance Findings", "level": 2})
+        blocks.append({"type": "findings", "findings": findings})
+
+    # Citations
+    citations = result.get("citations", [])
+    if citations:
+        blocks.append({"type": "heading", "content": "Regulatory References", "level": 2})
+        for cit in citations[:6]:
+            blocks.append({
+                "type": "citation",
+                "citation": {"text": cit.get("text", ""), "source": cit.get("source", "")},
+            })
+
+    # Checklist
+    checklist = result.get("checklist", [])
+    if checklist:
+        blocks.append({"type": "heading", "content": "Compliance Checklist", "level": 2})
+        blocks.append({"type": "checklist", "checklist": checklist})
+
+    # Status
+    blocks.append({"type": "status", "content": f"Review completed — {n_critical} critical, {n_warning} warnings, {n_pass} pass"})
+
+    follow_ups = [
+        {"text": "Which critical findings should we prioritize fixing first?"},
+        {"text": "Can you explain the MAS disclaimer requirement in more detail?"},
+        {"text": "What are the penalties for these compliance violations?"},
+    ]
+
+    message = {
+        "id": str(uuid.uuid4()),
+        "role": "ai",
+        "blocks": blocks,
+        "showStatus": True,
+        "suggestedFollowUps": follow_ups,
+    }
+
+    # Persist AI response
+    if conversation_id:
+        db.add_message(conversation_id, "ai", blocks)
+
+    return message
 
 
 @app.get("/api/compliance/sources")

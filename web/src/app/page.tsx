@@ -46,6 +46,7 @@ import {
   createConversation,
   listConversations as apiListConversations,
   getConversation as apiGetConversation,
+  uploadReview,
 } from "@/lib/api";
 
 // ── Demo sessions (shown only when no persisted conversations exist) ──
@@ -237,7 +238,25 @@ function RenderBlock({ block }: { block: ComplianceMessageBlock }) {
     case "attachment": return block.attachment ? <AttachmentCard attachment={block.attachment} /> : null;
     case "findings": return block.findings ? <FindingsTable findings={block.findings} /> : null;
     case "citation": return block.citation ? <CitationBlock citation={block.citation} /> : null;
-    case "checklist": return null;
+    case "checklist":
+      if (!block.checklist) return null;
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, margin: "8px 0" }}>
+          {block.checklist.map((item, i) => {
+            const color = item.status === "pass" ? "var(--color-pass)" : item.status === "fail" ? "var(--color-critical)" : "var(--color-warning)";
+            const bg = item.status === "pass" ? "var(--color-pass-bg)" : item.status === "fail" ? "var(--color-critical-bg)" : "var(--color-warning-bg)";
+            const Icon = item.status === "pass" ? CheckCircle : item.status === "fail" ? XCircle : AlertTriangle;
+            return (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 8, backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
+                <Icon size={14} style={{ color, flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "var(--color-fg)" }}>{item.label}</span>
+                {item.detail && <span style={{ fontSize: 11, color: "var(--color-fg-tertiary)", fontFamily: "var(--font-mono)", flexShrink: 0 }}>{item.detail}</span>}
+                <span style={{ padding: "2px 6px", borderRadius: 999, fontSize: 9, fontWeight: 700, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.05em", backgroundColor: bg, color }}>{item.status}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
     case "report-progress": return block.reportProgress ? <ReportProgressCard data={block.reportProgress} /> : null;
     case "status": return null;
     default: return null;
@@ -466,17 +485,62 @@ export default function ComplianceDemoPage() {
     setTimeout(() => textareaRef.current?.focus(), 100);
   }, []);
 
-  const createReviewSession = useCallback((_file?: File) => {
-    const id = `s-review-${Date.now()}`;
-    const newSession: ConversationSession = {
-      id, type: "review", title: "Asia Focus VCC Q1 2026 Factsheet", createdAt: new Date().toISOString(),
-      messages: reviewMockMessages,
-      document: { filename: "Asia_Focus_VCC_Q1_2026_Factsheet.pdf", filesize: "2.4 MB", pages: 12 },
-    };
-    setSessions((prev) => [newSession, ...prev]);
-    setActiveId(id);
+  const createReviewSession = useCallback(async (file?: File) => {
     setShowUpload(false);
     setShowNewMenu(false);
+
+    // No file → use demo mock data
+    if (!file) {
+      const id = `s-review-${Date.now()}`;
+      const newSession: ConversationSession = {
+        id, type: "review", title: "Asia Focus VCC Q1 2026 Factsheet", createdAt: new Date().toISOString(),
+        messages: reviewMockMessages,
+        document: { filename: "Asia_Focus_VCC_Q1_2026_Factsheet.pdf", filesize: "2.4 MB", pages: 12 },
+      };
+      setSessions((prev) => [newSession, ...prev]);
+      setActiveId(id);
+      return;
+    }
+
+    // Real file upload
+    try {
+      const conv = await createConversation(file.name, "review");
+      const fileSize = file.size < 1024 * 1024
+        ? `${(file.size / 1024).toFixed(0)} KB`
+        : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+      const userMsg: ComplianceMessage = {
+        id: Date.now().toString(), role: "user",
+        blocks: [{
+          type: "attachment",
+          attachment: { filename: file.name, filesize: fileSize, filetype: "pdf", status: "uploaded" },
+        }],
+      };
+      const newSession: ConversationSession = {
+        id: conv.id, type: "review", title: file.name, createdAt: conv.created_at,
+        messages: [userMsg],
+        document: { filename: file.name, filesize: fileSize, pages: 0 },
+      };
+      setSessions((prev) => [newSession, ...prev]);
+      setActiveId(conv.id);
+      setIsLoading(true);
+
+      const aiMsg = await uploadReview(file, conv.id);
+      setSessions((prev) => prev.map((s) => s.id === conv.id ? { ...s, messages: [...s.messages, aiMsg] } : s));
+    } catch (err) {
+      const errMsg: ComplianceMessage = {
+        id: `err-${Date.now()}`, role: "ai",
+        blocks: [{ type: "text", content: `Review failed: ${err instanceof Error ? err.message : "Unknown error"}` }],
+      };
+      setSessions((prev) => {
+        const last = prev[0];
+        if (last && last.type === "review") {
+          return [{ ...last, messages: [...last.messages, errMsg] }, ...prev.slice(1)];
+        }
+        return prev;
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const sendQuestion = useCallback(async (question: string) => {

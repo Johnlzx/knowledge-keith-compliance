@@ -67,3 +67,27 @@ export async function getConversation(id: string): Promise<ConversationDetail> {
 export async function deleteConversation(id: string): Promise<void> {
   return apiFetch(`/api/conversations/${id}`, { method: "DELETE" });
 }
+
+// ── Document Review ─────────────────────────────────────────────────
+
+export async function uploadReview(
+  file: File,
+  conversationId?: string,
+): Promise<ComplianceMessage> {
+  const form = new FormData();
+  form.append("file", file);
+  if (conversationId) form.append("conversation_id", conversationId);
+
+  const res = await fetch(`${API_BASE}/api/compliance/review`, {
+    method: "POST",
+    body: form,
+    // No Content-Type header — browser sets multipart boundary automatically
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(body || `API error ${res.status}`);
+  }
+
+  return res.json();
+}
