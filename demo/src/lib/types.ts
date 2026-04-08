@@ -93,3 +93,16 @@ export interface ComplianceMessage {
   showStatus?: boolean;
   variant?: "progress" | "compact";
 }
+
+export interface ConversationSession {
+  id: string;
+  type: "qa" | "review";
+  title: string;
+  createdAt: string;
+  messages: ComplianceMessage[];
+  document?: {
+    filename: string;
+    filesize: string;
+    pages: number;
+  };
+}
