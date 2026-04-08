@@ -7,8 +7,8 @@ load_dotenv()
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent.parent
-RAW_REGULATIONS_DIR = BASE_DIR / "01-Raw-Regulations"
-CHROMA_PERSIST_DIR = BASE_DIR / "02-Processed" / "chroma_db"
+RAW_REGULATIONS_DIR = BASE_DIR / "data" / "regulations"
+CHROMA_PERSIST_DIR = BASE_DIR / ".chroma"
 
 # Chunking
 CHUNK_SIZE = 1500

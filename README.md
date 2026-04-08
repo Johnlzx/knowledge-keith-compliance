@@ -10,17 +10,12 @@
 ### 1. Set up environment
 
 ```bash
-# Clone and enter project
 cd Keith-Compliance-RAG
 
-# Create Python virtual environment
 python3 -m venv venv
 source venv/bin/activate
-
-# Install Python dependencies
 pip install -r requirements.txt
 
-# Create .env with your API key
 cp .env.example .env
 # Edit .env and fill in your ANTHROPIC_API_KEY
 ```
@@ -28,16 +23,15 @@ cp .env.example .env
 ### 2. Ingest regulations into vector database
 
 ```bash
-python run_ingest.py
+python scripts/ingest.py
 ```
 
-This parses 23 regulation PDFs (14MB, ~1,800 pages) → 3,400+ chunks → ChromaDB vector store.
-Takes about 2 minutes on first run.
+Parses 23 regulation PDFs (~1,800 pages) into 3,400+ chunks in ChromaDB. Takes about 2 minutes.
 
 ### 3. Start the RAG API backend
 
 ```bash
-python run_api.py
+python scripts/serve.py
 # → http://localhost:8000
 # → Swagger docs: http://localhost:8000/docs
 ```
@@ -45,13 +39,11 @@ python run_api.py
 ### 4. Start the frontend
 
 ```bash
-cd demo
+cd web
 pnpm install
 pnpm dev
-# → http://localhost:3000/fund-compliance
+# → http://localhost:3000
 ```
-
-Open http://localhost:3000/fund-compliance in your browser. Type a compliance question and the system will search regulations and generate an answer with citations.
 
 ---
 
@@ -59,24 +51,24 @@ Open http://localhost:3000/fund-compliance in your browser. Type a compliance qu
 
 ```
 Keith-Compliance-RAG/
-├── rag/                        # Python RAG backend
-│   ├── config.py               #   Configuration (paths, model, chunk params)
-│   ├── ingest.py               #   PDF parsing → chunking → ChromaDB
-│   ├── retriever.py            #   Vector similarity search
-│   ├── chain.py                #   RAG chain (retrieve + Claude generation)
-│   └── api.py                  #   FastAPI REST endpoints
-│
-├── demo/                       # Next.js frontend
-│   └── src/app/page.tsx        #   Main compliance chat UI
-│
-├── 01-Raw-Regulations/         # Source regulation PDFs (23 files, 14MB)
-├── 02-Processed/               # ChromaDB vector database (generated)
-├── docs/                       # Documentation & analysis
-│
-├── run_ingest.py               # One-command ingestion script
-├── run_api.py                  # Start API server
-├── requirements.txt            # Python dependencies
-└── .env.example                # Environment variable template
+├── rag/                     # Python RAG backend
+│   ├── config.py            #   Configuration (paths, models, chunk params)
+│   ├── ingest.py            #   PDF parsing → chunking → ChromaDB
+│   ├── retriever.py         #   Vector similarity search
+│   ├── chain.py             #   RAG chain (retrieve + Claude generation)
+│   └── api.py               #   FastAPI REST endpoints
+├── web/                     # Next.js frontend
+│   └── src/app/page.tsx     #   Unified Q&A + document review UI
+├── data/
+│   └── regulations/         # Source regulation PDFs (23 files, 14 MB)
+├── scripts/
+│   ├── ingest.py            # Ingest PDFs into vector database
+│   └── serve.py             # Start API server
+├── docs/                    # Documentation & analysis
+├── .chroma/                 # ChromaDB vector store (generated, gitignored)
+├── Dockerfile
+├── requirements.txt
+└── .env.example
 ```
 
 ## API Endpoints
@@ -96,16 +88,16 @@ curl -X POST http://localhost:8000/api/compliance/chat \
   -d '{"question":"What is the minimum font size for CIS disclaimers?"}'
 ```
 
-## Knowledge Base (4 Regulatory Pillars)
+## Knowledge Base
 
-| Pillar | Document | Status |
-|--------|----------|--------|
-| SFA (Offers of Investment) | `SFA_2001_Full.pdf` | ✅ |
-| Code on CIS (Nov 2025) | `Code_on_CIS_Nov2025.pdf` | ✅ |
-| IMAS Code of Best Practices | `IMAS_Code_Best_Practices_Advertising_CIS_ILP.pdf` | ✅ |
-| MAS Pointers on CIS | Multiple FAQ + guideline files | ✅ |
+| Pillar | Document | Legal Force |
+|--------|----------|-------------|
+| Statute | SFA 2001 | Criminal liability |
+| MAS Code | Code on CIS (Nov 2025) | MAS enforcement |
+| MAS Guidelines | FMC, Liquidity Risk, TRM, etc. | Expected compliance |
+| Industry Code | IMAS Best Practices | Best practice |
 
-Plus 19 supplementary MAS notices, guidelines, and FAQs covering AML/CFT, technology risk, outsourcing, fair dealing, environmental risk, and more.
+Plus 19 supplementary MAS notices, guidelines, and FAQs.
 
 ## Tech Stack
 

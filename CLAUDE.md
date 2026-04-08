@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Keith Compliance RAG is a knowledge base and (planned) RAG pipeline for Singapore MAS financial compliance, targeting licensed fund management companies (LFMCs). It is a git submodule within the parent `xeni-moderation-agent` Next.js application.
+Keith Compliance RAG is an AI-powered compliance agent for Singapore MAS financial regulations, targeting licensed fund management companies (LFMCs). It is a standalone project (not a submodule).
 
 Two core use cases:
-1. **Compliance Q&A Agent** (Phase 1, April 2026 demo) — precise regulatory answers with section-level citations
-2. **Marketing Material Review Agent** (Phase 2, pilot) — auto-review fund factsheets against 20+ compliance rules, generating structured reports with Critical/Warning/Pass findings
+1. **Compliance Q&A Agent** (Phase 1) — precise regulatory answers with section-level citations
+2. **Marketing Material Review Agent** (Phase 2) — auto-review fund factsheets against 20+ compliance rules, generating structured reports with Critical/Warning/Pass findings
 
 The target client is RidgeField Capital (Singapore LFMC). Documentation is primarily in Chinese (Mandarin).
 
@@ -16,14 +16,30 @@ The target client is RidgeField Capital (Singapore LFMC). Documentation is prima
 
 ```
 Keith-Compliance-RAG/
-├── 01-Raw-Regulations/    # 10 source PDFs (~9MB, ~1600+ pages)
-├── 02-Processed/          # (Future) parsed text chunks for vector DB
-├── 03-Notes/              # Research notes
-├── docs/
-│   ├── product_analysis.md          # Pain points, POC strategy, demo script
-│   ├── business_overview.md         # RidgeField Capital company context
-│   ├── keith_requirements_and_insights.md  # Detailed needs analysis
-│   └── diagrams/                    # PlantUML diagrams (architecture, roadmap, etc.)
+├── rag/                     # Python RAG backend (LangChain + FastAPI)
+│   ├── config.py            #   Paths, models, chunk params
+│   ├── ingest.py            #   PDF parsing → chunking → ChromaDB
+│   ├── retriever.py         #   Vector similarity search
+│   ├── chain.py             #   RAG chain (retrieve + Claude generation)
+│   └── api.py               #   FastAPI REST endpoints
+├── web/                     # Next.js 16 frontend
+│   └── src/app/page.tsx     #   Unified Q&A + document review UI
+├── data/
+│   └── regulations/         # 23 source regulation PDFs (14 MB, ~1,800 pages)
+├── scripts/
+│   ├── ingest.py            # Ingest PDFs into vector database
+│   └── serve.py             # Start API server
+├── docs/                    # Documentation & analysis
+│   ├── product_analysis.md
+│   ├── business_overview.md
+│   ├── keith_requirements_and_insights.md
+│   ├── architecture_guide.md
+│   ├── diagrams/            # PlantUML architecture diagrams
+│   └── business/            # Client business documents
+├── .chroma/                 # ChromaDB vector store (generated, gitignored)
+├── Dockerfile
+├── requirements.txt
+└── .env.example
 ```
 
 ## Regulatory Knowledge Architecture
@@ -34,30 +50,35 @@ Four pillars, by legal authority (highest to lowest):
 |--------|-------------|-------------|
 | **Statute** | SFA 2001 (Securities & Futures Act) | Highest — criminal liability |
 | **MAS Code** | Code on CIS (Nov 2025 revision) | High — MAS enforcement |
-| **MAS Guidelines** | FMC Guidelines (SFA 04-G05), Liquidity Risk (SFA 04-G08), CIS Practitioners Guide | Medium — expected compliance |
+| **MAS Guidelines** | FMC Guidelines, Liquidity Risk, CIS Practitioners Guide | Medium — expected compliance |
 | **Industry Code** | IMAS Code of Best Practices | Low — best practice reference |
-
-Additionally, advertising-specific regulations: FAQs on Fair and Balanced Advertising, and Guidelines on Digital Advertising (FSG-03, effective 2026-03-25).
 
 **Code on CIS is the single most important document** — it contains 80%+ of marketing material review rules.
 
-## Planned Technical Architecture
+## Technical Architecture
 
 ```
-Input → RAG (vector DB with section/paragraph-level chunks) → Claude API → Structured output
+PDF → pdfplumber → RecursiveCharacterTextSplitter → ChromaDB (all-MiniLM-L6-v2)
+Query → ChromaDB similarity search (k=6) → Claude API → Structured JSON response
 ```
 
-- Chunking strategy: hierarchical by Part > Chapter > Section > Paragraph
-- Metadata per chunk: regulation name, section number, revision date, legal force level
-- Quality bar: >95% citation accuracy, <15s response time, section/paragraph-level precision
-- Output: structured compliance reports (Critical/Warning/Pass) with exact regulatory citations
+- Chunking: 1,500 chars, 200 overlap
+- Embedding: all-MiniLM-L6-v2 (local, 384-dim)
+- LLM: Claude Sonnet via Anthropic API
+- Vector DB: ChromaDB persisted to `.chroma/`
+- Quality bar: >95% citation accuracy, <15s response time
 
-## Relationship to Parent Project
+## Key Commands
 
-The parent `xeni-moderation-agent` repo contains a Next.js 16 app with a compliance demo page at `/compliance/demo` (`src/app/compliance/demo/page.tsx`). That page currently renders mock data from `src/lib/compliance-demo.ts`. The planned integration replaces mock data with real RAG-powered API calls.
+```bash
+python scripts/ingest.py    # Ingest PDFs into vector DB
+python scripts/serve.py     # Start API on :8000
+cd web && pnpm dev          # Start frontend on :3000
+```
 
 ## Key Documents for Context
 
 - `docs/product_analysis.md` — POC strategy, 4 demo scenarios, pain point priority matrix
 - `docs/keith_requirements_and_insights.md` — detailed RAG evaluation criteria and compliance workflow analysis
 - `docs/business_overview.md` — RidgeField Capital operations, fund types, team structure
+- `docs/architecture_guide.md` — RAG system architecture deep dive
