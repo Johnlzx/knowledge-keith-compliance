@@ -41,9 +41,15 @@ import type {
 } from "@/lib/types";
 import { reviewMockMessages } from "@/lib/review-mock-data";
 import { qaMockMessages } from "@/lib/qa-mock-data";
+import {
+  askCompliance,
+  createConversation,
+  listConversations as apiListConversations,
+  getConversation as apiGetConversation,
+} from "@/lib/api";
 
-// ── Mock sessions ──────────────────────────────────────────────────
-const mockSessions: ConversationSession[] = [
+// ── Demo sessions (shown only when no persisted conversations exist) ──
+const demoSessions: ConversationSession[] = [
   {
     id: "s-review-1",
     type: "review",
@@ -376,12 +382,13 @@ function UploadOverlay({ onClose, onUpload }: { onClose: () => void; onUpload: (
 
 // ── Main page ───────────────────────────────────────────────────────
 export default function ComplianceDemoPage() {
-  const [sessions, setSessions] = useState<ConversationSession[]>(mockSessions);
-  const [activeId, setActiveId] = useState<string>(mockSessions[0].id);
+  const [sessions, setSessions] = useState<ConversationSession[]>(demoSessions);
+  const [activeId, setActiveId] = useState<string>(demoSessions[0].id);
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [input, setInput] = useState("");
   const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -395,6 +402,43 @@ export default function ComplianceDemoPage() {
 
   useEffect(() => { scrollToBottom(); }, [activeSession?.messages.length, scrollToBottom]);
 
+  // Load persisted conversations from backend on mount
+  useEffect(() => {
+    apiListConversations()
+      .then((list) => {
+        if (list.length > 0) {
+          const loaded: ConversationSession[] = list.map((c) => ({
+            id: c.id,
+            type: c.type as "qa" | "review",
+            title: c.title,
+            createdAt: c.created_at,
+            messages: [], // lazy-loaded when selected
+          }));
+          setSessions([...loaded, ...demoSessions]);
+          setActiveId(loaded[0].id);
+        }
+      })
+      .catch(() => { /* backend offline — keep demo sessions */ });
+  }, []);
+
+  // Load full messages when switching to a persisted conversation
+  const loadConversationMessages = useCallback(async (id: string) => {
+    // Skip demo sessions (they start with "s-")
+    if (id.startsWith("s-")) return;
+    try {
+      const detail = await apiGetConversation(id);
+      const messages: ComplianceMessage[] = detail.messages.map((m) => ({
+        id: m.id,
+        role: m.role as "user" | "ai",
+        blocks: m.content,
+        showStatus: m.role === "ai",
+      }));
+      setSessions((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, messages } : s)),
+      );
+    } catch { /* ignore load errors */ }
+  }, []);
+
   // Close new menu on outside click
   useEffect(() => {
     if (!showNewMenu) return;
@@ -405,12 +449,20 @@ export default function ComplianceDemoPage() {
     return () => document.removeEventListener("mousedown", handler);
   }, [showNewMenu]);
 
-  const createQASession = useCallback(() => {
-    const id = `s-qa-${Date.now()}`;
-    const newSession: ConversationSession = { id, type: "qa", title: "New Q&A", createdAt: new Date().toISOString(), messages: [] };
-    setSessions((prev) => [newSession, ...prev]);
-    setActiveId(id);
+  const createQASession = useCallback(async () => {
     setShowNewMenu(false);
+    try {
+      const conv = await createConversation("New Q&A", "qa");
+      const newSession: ConversationSession = { id: conv.id, type: "qa", title: conv.title, createdAt: conv.created_at, messages: [] };
+      setSessions((prev) => [newSession, ...prev]);
+      setActiveId(conv.id);
+    } catch {
+      // Fallback to local-only session if backend is down
+      const id = `s-qa-${Date.now()}`;
+      const newSession: ConversationSession = { id, type: "qa", title: "New Q&A", createdAt: new Date().toISOString(), messages: [] };
+      setSessions((prev) => [newSession, ...prev]);
+      setActiveId(id);
+    }
     setTimeout(() => textareaRef.current?.focus(), 100);
   }, []);
 
@@ -427,20 +479,41 @@ export default function ComplianceDemoPage() {
     setShowNewMenu(false);
   }, []);
 
+  const sendQuestion = useCallback(async (question: string) => {
+    if (!activeId) return;
+    setIsLoading(true);
+    try {
+      // Pass conversation_id for persisted sessions (demo sessions start with "s-")
+      const convId = activeId.startsWith("s-") ? undefined : activeId;
+      const aiMsg = await askCompliance(question, convId);
+      setSessions((prev) => prev.map((s) => s.id === activeId ? { ...s, messages: [...s.messages, aiMsg] } : s));
+    } catch (err) {
+      const errMsg: ComplianceMessage = {
+        id: `err-${Date.now()}`, role: "ai",
+        blocks: [{ type: "text", content: `Request failed: ${err instanceof Error ? err.message : "Unknown error"}` }],
+      };
+      setSessions((prev) => prev.map((s) => s.id === activeId ? { ...s, messages: [...s.messages, errMsg] } : s));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeId]);
+
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
-    if (!trimmed || !activeId) return;
+    if (!trimmed || !activeId || isLoading) return;
     const userMsg: ComplianceMessage = { id: Date.now().toString(), role: "user", blocks: [{ type: "text", content: trimmed }] };
     setSessions((prev) => prev.map((s) => s.id === activeId ? { ...s, messages: [...s.messages, userMsg], title: s.messages.length === 0 ? trimmed.slice(0, 40) : s.title } : s));
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
-  }, [input, activeId]);
+    sendQuestion(trimmed);
+  }, [input, activeId, isLoading, sendQuestion]);
 
   const handleFollowUp = useCallback((text: string) => {
-    if (!activeId) return;
+    if (!activeId || isLoading) return;
     const userMsg: ComplianceMessage = { id: Date.now().toString(), role: "user", blocks: [{ type: "text", content: text }] };
     setSessions((prev) => prev.map((s) => s.id === activeId ? { ...s, messages: [...s.messages, userMsg] } : s));
-  }, [activeId]);
+    sendQuestion(text);
+  }, [activeId, isLoading, sendQuestion]);
 
   return (
     <div className="flex" style={{ height: "calc(100vh - var(--nav-height))", backgroundColor: "var(--color-bg)" }}>
@@ -478,7 +551,7 @@ export default function ComplianceDemoPage() {
             {sessions.map((s) => {
               const isActive = s.id === activeId;
               return (
-                <button key={s.id} onClick={() => { setActiveId(s.id); if (leftCollapsed) return; }} className="w-full text-left cursor-pointer" style={{ display: "flex", alignItems: "center", gap: leftCollapsed ? 0 : 10, padding: leftCollapsed ? "8px 0" : "10px 10px", borderRadius: 8, border: "none", backgroundColor: isActive ? "var(--color-surface-hover)" : "transparent", color: "var(--color-fg)", fontFamily: "var(--font-body)", transition: "background-color 100ms ease", justifyContent: leftCollapsed ? "center" : "flex-start" }}
+                <button key={s.id} onClick={() => { setActiveId(s.id); loadConversationMessages(s.id); if (leftCollapsed) return; }} className="w-full text-left cursor-pointer" style={{ display: "flex", alignItems: "center", gap: leftCollapsed ? 0 : 10, padding: leftCollapsed ? "8px 0" : "10px 10px", borderRadius: 8, border: "none", backgroundColor: isActive ? "var(--color-surface-hover)" : "transparent", color: "var(--color-fg)", fontFamily: "var(--font-body)", transition: "background-color 100ms ease", justifyContent: leftCollapsed ? "center" : "flex-start" }}
                   onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = "var(--color-surface)"; }}
                   onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = "transparent"; }}>
                   <span style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: s.type === "review" ? "var(--color-info-bg)" : "var(--color-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -515,6 +588,22 @@ export default function ComplianceDemoPage() {
             <div className="flex-1 overflow-y-auto">
               <div style={{ maxWidth: 800, margin: "0 auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 24 }}>
                 {activeSession.messages.map((msg) => <ChatMessage key={msg.id} message={msg} onFollowUp={handleFollowUp} />)}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                        <span style={{ width: 20, height: 20, borderRadius: 5, backgroundColor: "var(--color-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Shield size={11} color="white" /></span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--color-fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "var(--font-mono)" }}>CosX Compliance</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 0" }}>
+                        <span className="loading-dot" style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "var(--color-fg-tertiary)", animation: "loading-bounce 1.4s ease-in-out infinite", animationDelay: "0s" }} />
+                        <span className="loading-dot" style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "var(--color-fg-tertiary)", animation: "loading-bounce 1.4s ease-in-out infinite", animationDelay: "0.2s" }} />
+                        <span className="loading-dot" style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "var(--color-fg-tertiary)", animation: "loading-bounce 1.4s ease-in-out infinite", animationDelay: "0.4s" }} />
+                      </div>
+                      <style>{`@keyframes loading-bounce { 0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }`}</style>
+                    </div>
+                  </div>
+                )}
                 {activeSession.messages.length === 0 && (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: 120, gap: 12, color: "var(--color-fg-tertiary)" }}>
                     <MessageSquare size={28} style={{ opacity: 0.3 }} />
@@ -529,7 +618,7 @@ export default function ComplianceDemoPage() {
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 8, border: "1px solid var(--color-border)", borderRadius: 12, backgroundColor: "var(--color-surface)", padding: "8px 12px" }}>
                   <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
                     onInput={() => { const t = textareaRef.current; if (t) { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 120) + "px"; } }}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleSend(); } }}
                     placeholder={activeSession.type === "review" ? "Ask a follow-up about this review..." : "Ask about MAS compliance requirements..."}
                     rows={1} style={{ flex: 1, resize: "none", backgroundColor: "transparent", fontSize: 14, lineHeight: 1.6, outline: "none", border: "none", color: "var(--color-fg)", minHeight: 34, padding: "5px 0", fontFamily: "var(--font-body)" }} />
                   <button className="flex-shrink-0 flex items-center justify-center rounded-full cursor-pointer" style={{ width: 30, height: 30, backgroundColor: "transparent", border: "none", color: "var(--color-fg-tertiary)" }}
@@ -537,7 +626,7 @@ export default function ComplianceDemoPage() {
                     onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-fg-tertiary)"; e.currentTarget.style.backgroundColor = "transparent"; }}>
                     <Mic size={14} />
                   </button>
-                  <button onClick={handleSend} disabled={!input.trim()} className="flex-shrink-0 flex items-center justify-center rounded-full text-white cursor-pointer" style={{ width: 30, height: 30, backgroundColor: "var(--color-accent)", border: "none", opacity: input.trim() ? 1 : 0.4 }}>
+                  <button onClick={handleSend} disabled={!input.trim() || isLoading} className="flex-shrink-0 flex items-center justify-center rounded-full text-white cursor-pointer" style={{ width: 30, height: 30, backgroundColor: "var(--color-accent)", border: "none", opacity: input.trim() && !isLoading ? 1 : 0.4 }}>
                     <ArrowUp size={14} />
                   </button>
                 </div>

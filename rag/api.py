@@ -1,16 +1,19 @@
 """FastAPI service for compliance Q&A."""
 
+from __future__ import annotations
+
+import os
 import uuid
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-import os
-
 from rag.chain import ask
 from rag.config import ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, CHROMA_PERSIST_DIR, RAW_REGULATIONS_DIR
 from rag.retriever import get_vectorstore
+from rag import database as db
 
 # Startup diagnostics
 print(f"[DIAG] ANTHROPIC_API_KEY set: {bool(ANTHROPIC_API_KEY)} (len={len(ANTHROPIC_API_KEY)})")
@@ -34,6 +37,12 @@ app.add_middleware(
 
 class QuestionRequest(BaseModel):
     question: str
+    conversation_id: Optional[str] = None
+
+
+class CreateConversationRequest(BaseModel):
+    title: str = "New Q&A"
+    type: str = "qa"
 
 
 class Citation(BaseModel):
@@ -93,7 +102,13 @@ def compliance_chat(req: QuestionRequest):
             detail="Vector database not initialized. Run `python run_ingest.py` first.",
         )
 
-    result = ask(req.question)
+    # Load conversation history if conversation_id is provided
+    history = None
+    if req.conversation_id:
+        history = db.get_history_for_llm(req.conversation_id)
+        # Persist the user message
+        db.add_message(req.conversation_id, "user", [{"type": "text", "content": req.question}])
+    result = ask(req.question, conversation_history=history)
 
     # Build thinking steps from retrieved sources
     thinking_steps = []
@@ -158,7 +173,38 @@ def compliance_chat(req: QuestionRequest):
         "suggestedFollowUps": follow_ups,
     }
 
+    # Persist AI response
+    if req.conversation_id:
+        db.add_message(req.conversation_id, "ai", blocks)
+
     return message
+
+
+# ── Conversation CRUD ────────────────────────────────────────────────
+
+@app.post("/api/conversations")
+def create_conversation(req: CreateConversationRequest):
+    return db.create_conversation(req.title, req.type)
+
+
+@app.get("/api/conversations")
+def list_conversations():
+    return db.list_conversations()
+
+
+@app.get("/api/conversations/{conv_id}")
+def get_conversation(conv_id: str):
+    conv = db.get_conversation(conv_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return conv
+
+
+@app.delete("/api/conversations/{conv_id}")
+def delete_conversation(conv_id: str):
+    if not db.delete_conversation(conv_id):
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return {"ok": True}
 
 
 @app.get("/api/compliance/sources")

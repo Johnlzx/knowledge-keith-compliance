@@ -28,3 +28,7 @@ LLM_MAX_TOKENS = 4096
 
 # ChromaDB collection name
 COLLECTION_NAME = "mas_regulations"
+
+# Conversation database
+DB_DIR = BASE_DIR / ".data"
+DB_PATH = DB_DIR / "conversations.db"
