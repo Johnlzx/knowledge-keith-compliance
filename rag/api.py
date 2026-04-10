@@ -246,15 +246,10 @@ async def compliance_review(
     # Run review
     result = review_document(doc["full_text"], doc["page_count"], conversation_history=history)
 
-    # Build thinking steps from retrieved sources
-    thinking_steps = []
+    # Count retrieved sources
     seen_sources = set()
     for src in result.get("retrieved_sources", []):
-        source_name = src["source"]
-        if source_name not in seen_sources:
-            seen_sources.add(source_name)
-            thinking_steps.append({"icon": "search", "text": f"Checked {source_name}"})
-    thinking_steps.append({"icon": "analyze", "text": "Cross-referencing compliance rules against document content"})
+        seen_sources.add(src["source"])
 
     # Count findings by severity
     findings = result.get("findings", [])
@@ -265,26 +260,17 @@ async def compliance_review(
     # Build blocks
     blocks = []
 
-    # Thinking
-    blocks.append({
-        "type": "thinking",
-        "thinking": {
-            "title": f"Reviewing {file.filename} ({doc['page_count']} pages)",
-            "description": f"Checking against {len(seen_sources)} regulatory sources across 9 compliance dimensions.",
-            "steps": thinking_steps,
-        },
-    })
-
-    # Report progress
+    # Generic report progress — reusable across every case
     blocks.append({
         "type": "report-progress",
         "reportProgress": {
-            "title": "Compliance Review",
+            "title": "Compliance Review Pipeline",
             "steps": [
-                {"label": "Document extraction", "status": "done", "detail": f"{doc['page_count']} pages"},
-                {"label": "Regulatory matching", "status": "done", "detail": f"{len(seen_sources)} sources"},
-                {"label": "Compliance analysis", "status": "done", "detail": f"{n_critical} critical, {n_warning} warnings"},
-                {"label": "Report generation", "status": "done"},
+                {"label": "Parsing document structure", "status": "done", "detail": f"{doc['page_count']} pages"},
+                {"label": "Retrieving applicable regulations", "status": "done", "detail": f"{len(seen_sources)} sources"},
+                {"label": "Analyzing compliance dimensions", "status": "done", "detail": "9 dimensions"},
+                {"label": "Compiling findings and recommendations", "status": "done", "detail": f"{n_critical + n_warning + n_pass} items"},
+                {"label": "Finalizing compliance report", "status": "done"},
             ],
         },
     })

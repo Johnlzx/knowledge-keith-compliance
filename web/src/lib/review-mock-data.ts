@@ -22,71 +22,21 @@ export const reviewMockMessages: ComplianceMessage[] = [
     ],
   },
 
-  // ── AI: Thinking + report progress ─────────────────────────────
+  // ── AI: Report progress (generic pipeline) ─────────────────────
   {
     id: "rv-m2",
     role: "ai",
     blocks: [
       {
-        type: "text",
-        content:
-          "I'll conduct a comprehensive compliance review of the factsheet against the four regulatory frameworks — SFA, Code on CIS, IMAS Code of Best Practices, and the new MAS Digital Advertising Guidelines.",
-      },
-      {
-        type: "thinking",
-        thinking: {
-          title: "Reviewing Asia Focus VCC Fund Factsheet",
-          description:
-            "Performing a systematic compliance scan of the uploaded factsheet against all applicable MAS regulatory requirements for CIS marketing materials directed at retail investors.",
-          steps: [
-            {
-              icon: "analyze",
-              text: "Scanning document structure and content — 12 pages, fund overview, performance, fees, risk disclosures",
-            },
-            {
-              icon: "search",
-              text: "Cross-referencing with Code on CIS (Nov 2025) mandatory disclosure checklist",
-            },
-            {
-              icon: "visit",
-              text: "Checking advertising compliance against SF(LCB)R Regulation 46 font and disclaimer requirements",
-            },
-            {
-              icon: "analyze",
-              text: "Verifying performance presentation against IMAS Code of Best Practices standards",
-            },
-            {
-              icon: "search",
-              text: "Reviewing fee disclosure completeness per Code on CIS Chapter 7 requirements",
-            },
-          ],
-        },
-      },
-      {
         type: "report-progress",
         reportProgress: {
-          title: "Generating Compliance Report",
+          title: "Compliance Review Pipeline",
           steps: [
-            {
-              label: "Parsing document — 12 pages, 4 sections",
-              status: "done",
-            },
-            {
-              label: "Extracting text and visual elements",
-              status: "done",
-            },
-            {
-              label: "Checking SFA & SF(LCB)R requirements",
-              status: "done",
-            },
-            { label: "Checking Code on CIS (Nov 2025)", status: "done" },
-            { label: "Checking IMAS Best Practices", status: "done" },
-            {
-              label: "Compiling findings",
-              status: "done",
-              detail: "3 critical, 2 warnings identified",
-            },
-            { label: "Generating final report", status: "done" },
+            { label: "Parsing document structure", status: "done", detail: "12 pages" },
+            { label: "Retrieving applicable regulations", status: "done", detail: "8 sources" },
+            { label: "Analyzing compliance dimensions", status: "done", detail: "9 dimensions" },
+            { label: "Compiling findings and recommendations", status: "done", detail: "13 items" },
+            { label: "Finalizing compliance report", status: "done" },
           ],
           report: {
             filename: "Compliance_Review_Asia_Focus_VCC_Q1_2026.pdf",

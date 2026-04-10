@@ -40,7 +40,6 @@ import type {
   ConversationSession,
 } from "@/lib/types";
 import { reviewMockMessages } from "@/lib/review-mock-data";
-import { qaMockMessages } from "@/lib/qa-mock-data";
 import {
   askCompliance,
   createConversation,
@@ -58,13 +57,6 @@ const demoSessions: ConversationSession[] = [
     createdAt: "2026-04-08T10:30:00Z",
     messages: reviewMockMessages,
     document: { filename: "Asia_Focus_VCC_Q1_2026_Factsheet.pdf", filesize: "2.4 MB", pages: 12 },
-  },
-  {
-    id: "s-qa-1",
-    type: "qa",
-    title: "CIS font size & disclaimer requirements",
-    createdAt: "2026-04-08T09:15:00Z",
-    messages: qaMockMessages,
   },
 ];
 
@@ -214,28 +206,43 @@ function CitationModal({ citations, onClose }: { citations: CitationData[]; onCl
 
 // ── Report progress card ────────────────────────────────────────────
 function ReportProgressCard({ data }: { data: ReportProgressData }) {
+  const inProgress = data.steps.some((s: { status: string }) => s.status === "active" || s.status === "pending");
+  // Default: expanded while in progress, collapsed when done
+  const [open, setOpen] = useState(inProgress);
+  const doneCount = data.steps.filter((s) => s.status === "done").length;
   return (
     <div style={{ border: "1px solid var(--color-border)", borderRadius: 10, overflow: "hidden", marginTop: 4, marginBottom: 4 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", backgroundColor: "var(--color-accent)", color: "white" }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full cursor-pointer"
+        style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", backgroundColor: "var(--color-accent)", color: "white", border: "none", textAlign: "left" }}
+      >
         <Shield size={14} />
         <span style={{ flex: 1, fontSize: 12, fontWeight: 700, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{data.title}</span>
-        {data.steps.some((s: { status: string }) => s.status === "active" || s.status === "pending") && <Loader2 size={14} style={{ animation: "spin 1.5s linear infinite", opacity: 0.7 }} />}
-      </div>
-      {data.steps.length > 0 && (
-        <div style={{ padding: "6px 14px" }}>
+        {inProgress ? (
+          <Loader2 size={14} style={{ animation: "spin 1.5s linear infinite", opacity: 0.7 }} />
+        ) : (
+          <span style={{ fontSize: 10, fontWeight: 600, opacity: 0.85, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            {doneCount}/{data.steps.length} done
+          </span>
+        )}
+        {open ? <ChevronDown size={14} style={{ opacity: 0.85 }} /> : <ChevronRight size={14} style={{ opacity: 0.85 }} />}
+      </button>
+      {open && data.steps.length > 0 && (
+        <div className="animate-fade-in" style={{ padding: "6px 14px" }}>
           {data.steps.map((step: { label: string; status: string; detail?: string }, i: number) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: i < data.steps.length - 1 ? "1px solid var(--color-border)" : "none" }}>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: i < data.steps.length - 1 ? "1px solid var(--color-border)" : "none" }}>
               {step.status === "done" ? <CheckCircle size={14} style={{ color: "var(--color-pass)", flexShrink: 0 }} /> : step.status === "active" ? (
                 <span className="animate-pulse-dot" style={{ width: 14, height: 14, borderRadius: "50%", backgroundColor: "var(--color-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><span style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: "white" }} /></span>
               ) : <Circle size={14} style={{ color: "var(--color-fg-tertiary)", flexShrink: 0 }} />}
               <span style={{ fontSize: 12, color: step.status === "pending" ? "var(--color-fg-tertiary)" : "var(--color-fg)", fontWeight: step.status === "active" ? 600 : 400, flex: 1 }}>{step.label}</span>
-              {step.detail && step.status === "active" && <span style={{ fontSize: 10, color: "var(--color-fg-tertiary)", flexShrink: 0, fontFamily: "var(--font-mono)" }}>{step.detail}</span>}
+              {step.detail && <span style={{ fontSize: 10, color: "var(--color-fg-tertiary)", flexShrink: 0, fontFamily: "var(--font-mono)" }}>{step.detail}</span>}
             </div>
           ))}
         </div>
       )}
-      {data.report && (
-        <div style={{ margin: "2px 14px 10px", padding: "8px 10px", borderRadius: 8, backgroundColor: "var(--color-surface-hover)", border: "1px solid var(--color-border)", display: "flex", alignItems: "center", gap: 10 }}>
+      {open && data.report && (
+        <div className="animate-fade-in" style={{ margin: "2px 14px 10px", padding: "8px 10px", borderRadius: 8, backgroundColor: "var(--color-surface-hover)", border: "1px solid var(--color-border)", display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: "var(--color-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><FileText size={14} color="white" /></div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-fg)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{data.report.filename}</div>
@@ -392,6 +399,96 @@ function ChatMessage({ message, onFollowUp }: { message: ComplianceMessage; onFo
 }
 
 
+// ── Chat input bar ──────────────────────────────────────────────────
+function ChatInputBar({
+  value,
+  onChange,
+  onSend,
+  onUploadClick,
+  onFilePicked,
+  isLoading,
+  placeholder,
+  autoFocus,
+  large,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSend: () => void;
+  onUploadClick: () => void;
+  onFilePicked: (file: File) => void;
+  isLoading: boolean;
+  placeholder: string;
+  autoFocus?: boolean;
+  large?: boolean;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (autoFocus) {
+      const t = setTimeout(() => textareaRef.current?.focus(), 80);
+      return () => clearTimeout(t);
+    }
+  }, [autoFocus]);
+
+  const resetHeight = () => {
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+  };
+
+  const handleSend = () => {
+    onSend();
+    resetHeight();
+  };
+
+  const padY = large ? 12 : 8;
+  const padX = large ? 16 : 12;
+  const fontSize = large ? 15 : 14;
+  const minH = large ? 44 : 34;
+  const btnSize = large ? 34 : 30;
+  const iconSize = large ? 16 : 14;
+
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 8, border: "1px solid var(--color-border)", borderRadius: large ? 16 : 12, backgroundColor: "var(--color-surface)", padding: `${padY}px ${padX}px`, boxShadow: large ? "0 4px 20px rgba(0,0,0,0.04)" : undefined }}>
+      <button
+        onClick={onUploadClick}
+        disabled={isLoading}
+        className="flex-shrink-0 flex items-center justify-center rounded-full cursor-pointer"
+        style={{ width: btnSize, height: btnSize, backgroundColor: "transparent", border: "none", color: "var(--color-fg-tertiary)", opacity: isLoading ? 0.4 : 1 }}
+        onMouseEnter={(e) => { if (!isLoading) { e.currentTarget.style.color = "var(--color-fg)"; e.currentTarget.style.backgroundColor = "var(--color-surface-hover)"; } }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-fg-tertiary)"; e.currentTarget.style.backgroundColor = "transparent"; }}
+        title="Upload PDF for compliance review"
+      >
+        <Paperclip size={iconSize + 1} />
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFilePicked(f); e.target.value = ""; }}
+        style={{ display: "none" }}
+      />
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onInput={() => { const t = textareaRef.current; if (t) { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 160) + "px"; } }}
+        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleSend(); } }}
+        placeholder={placeholder}
+        rows={1}
+        style={{ flex: 1, resize: "none", backgroundColor: "transparent", fontSize, lineHeight: 1.6, outline: "none", border: "none", color: "var(--color-fg)", minHeight: minH, padding: "5px 0", fontFamily: "var(--font-body)" }}
+      />
+      <button
+        onClick={handleSend}
+        disabled={!value.trim() || isLoading}
+        className="flex-shrink-0 flex items-center justify-center rounded-full text-white cursor-pointer"
+        style={{ width: btnSize, height: btnSize, backgroundColor: "var(--color-accent)", border: "none", opacity: value.trim() && !isLoading ? 1 : 0.4 }}
+      >
+        <ArrowUp size={iconSize} />
+      </button>
+    </div>
+  );
+}
+
 // ── Upload overlay ──────────────────────────────────────────────────
 function UploadOverlay({ onClose, onUpload }: { onClose: () => void; onUpload: (file?: File) => void }) {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -445,17 +542,15 @@ function UploadOverlay({ onClose, onUpload }: { onClose: () => void; onUpload: (
 // ── Main page ───────────────────────────────────────────────────────
 export default function ComplianceDemoPage() {
   const [sessions, setSessions] = useState<ConversationSession[]>(demoSessions);
-  const [activeId, setActiveId] = useState<string>(demoSessions[0].id);
+  const [activeId, setActiveId] = useState<string | null>(demoSessions[0].id);
   const [showUpload, setShowUpload] = useState(false);
   const [input, setInput] = useState("");
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const activeSession = sessions.find((s) => s.id === activeId);
+  const activeSession = activeId ? sessions.find((s) => s.id === activeId) : null;
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -500,20 +595,36 @@ export default function ComplianceDemoPage() {
     } catch { /* ignore load errors */ }
   }, []);
 
-  const createSession = useCallback(async () => {
-    try {
-      const conv = await createConversation("New Conversation", "qa");
-      const newSession: ConversationSession = { id: conv.id, type: "qa", title: conv.title, createdAt: conv.created_at, messages: [] };
-      setSessions((prev) => [newSession, ...prev]);
-      setActiveId(conv.id);
-    } catch {
-      const id = `s-${Date.now()}`;
-      const newSession: ConversationSession = { id, type: "qa", title: "New Conversation", createdAt: new Date().toISOString(), messages: [] };
-      setSessions((prev) => [newSession, ...prev]);
-      setActiveId(id);
-    }
-    setTimeout(() => textareaRef.current?.focus(), 100);
+  // Enter landing state: no active session, no backend call yet
+  const startNewConversation = useCallback(() => {
+    setActiveId(null);
+    setInput("");
   }, []);
+
+  // Create a session on first submit (text or file). Returns the new session id.
+  const createSessionForFirstMessage = useCallback(
+    async (title: string, type: "qa" | "review"): Promise<{ id: string; createdAt: string }> => {
+      try {
+        const conv = await createConversation(title, type);
+        const newSession: ConversationSession = {
+          id: conv.id,
+          type,
+          title: conv.title || title,
+          createdAt: conv.created_at,
+          messages: [],
+        };
+        setSessions((prev) => [newSession, ...prev]);
+        return { id: conv.id, createdAt: conv.created_at };
+      } catch {
+        const id = `s-${Date.now()}`;
+        const createdAt = new Date().toISOString();
+        const newSession: ConversationSession = { id, type, title, createdAt, messages: [] };
+        setSessions((prev) => [newSession, ...prev]);
+        return { id, createdAt };
+      }
+    },
+    [],
+  );
 
   const handleFileUpload = useCallback(async (file?: File) => {
     setShowUpload(false);
@@ -595,41 +706,51 @@ export default function ComplianceDemoPage() {
     }
   }, [activeId]);
 
-  const sendQuestion = useCallback(async (question: string) => {
-    if (!activeId) return;
+  const sendQuestionToSession = useCallback(async (sessionId: string, question: string) => {
     setIsLoading(true);
     try {
-      // Pass conversation_id for persisted sessions (demo sessions start with "s-")
-      const convId = activeId.startsWith("s-") ? undefined : activeId;
+      // Pass conversation_id for persisted sessions (local sessions start with "s-")
+      const convId = sessionId.startsWith("s-") ? undefined : sessionId;
       const aiMsg = await askCompliance(question, convId);
-      setSessions((prev) => prev.map((s) => s.id === activeId ? { ...s, messages: [...s.messages, aiMsg] } : s));
+      setSessions((prev) => prev.map((s) => s.id === sessionId ? { ...s, messages: [...s.messages, aiMsg] } : s));
     } catch (err) {
       const errMsg: ComplianceMessage = {
         id: `err-${Date.now()}`, role: "ai",
         blocks: [{ type: "text", content: `Request failed: ${err instanceof Error ? err.message : "Unknown error"}` }],
       };
-      setSessions((prev) => prev.map((s) => s.id === activeId ? { ...s, messages: [...s.messages, errMsg] } : s));
+      setSessions((prev) => prev.map((s) => s.id === sessionId ? { ...s, messages: [...s.messages, errMsg] } : s));
     } finally {
       setIsLoading(false);
     }
-  }, [activeId]);
+  }, []);
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     const trimmed = input.trim();
-    if (!trimmed || !activeId || isLoading) return;
+    if (!trimmed || isLoading) return;
     const userMsg: ComplianceMessage = { id: Date.now().toString(), role: "user", blocks: [{ type: "text", content: trimmed }] };
+
+    // Landing path: no active session yet — create one now
+    if (!activeId) {
+      setInput("");
+      const { id: newId } = await createSessionForFirstMessage(trimmed.slice(0, 40), "qa");
+      setActiveId(newId);
+      setSessions((prev) => prev.map((s) => s.id === newId ? { ...s, messages: [...s.messages, userMsg] } : s));
+      sendQuestionToSession(newId, trimmed);
+      return;
+    }
+
+    // Existing session path
     setSessions((prev) => prev.map((s) => s.id === activeId ? { ...s, messages: [...s.messages, userMsg], title: s.messages.length === 0 ? trimmed.slice(0, 40) : s.title } : s));
     setInput("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
-    sendQuestion(trimmed);
-  }, [input, activeId, isLoading, sendQuestion]);
+    sendQuestionToSession(activeId, trimmed);
+  }, [input, activeId, isLoading, sendQuestionToSession, createSessionForFirstMessage]);
 
   const handleFollowUp = useCallback((text: string) => {
     if (!activeId || isLoading) return;
     const userMsg: ComplianceMessage = { id: Date.now().toString(), role: "user", blocks: [{ type: "text", content: text }] };
     setSessions((prev) => prev.map((s) => s.id === activeId ? { ...s, messages: [...s.messages, userMsg] } : s));
-    sendQuestion(text);
-  }, [activeId, isLoading, sendQuestion]);
+    sendQuestionToSession(activeId, text);
+  }, [activeId, isLoading, sendQuestionToSession]);
 
   return (
     <div className="flex" style={{ height: "calc(100vh - var(--nav-height))", backgroundColor: "var(--color-bg)" }}>
@@ -638,7 +759,7 @@ export default function ComplianceDemoPage() {
         {/* Header */}
         <div style={{ padding: leftCollapsed ? "14px 10px 10px" : "14px 14px 10px", display: "flex", alignItems: "center", justifyContent: leftCollapsed ? "center" : "space-between" }}>
           {!leftCollapsed && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--color-fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "var(--font-mono)" }}>Conversations</span>}
-          <button onClick={createSession} className="cursor-pointer" style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-fg-secondary)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          <button onClick={startNewConversation} className="cursor-pointer" style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-fg-secondary)", display: "flex", alignItems: "center", justifyContent: "center" }}
             onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface-hover)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface)"; }}>
             <Plus size={14} />
@@ -681,7 +802,7 @@ export default function ComplianceDemoPage() {
         </div>
       </div>
 
-      {/* ── Center: Chat ───────────────────────────────────────────── */}
+      {/* ── Center: Chat or Landing ────────────────────────────────── */}
       <div className="flex flex-col flex-1 min-w-0">
         {activeSession ? (
           <>
@@ -704,46 +825,51 @@ export default function ComplianceDemoPage() {
                     </div>
                   </div>
                 )}
-                {activeSession.messages.length === 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: 120, gap: 16, color: "var(--color-fg-tertiary)" }}>
-                    <Shield size={32} style={{ opacity: 0.3 }} />
-                    <p style={{ fontSize: 14 }}>Ask a compliance question or upload a document for review</p>
-                    <button onClick={() => setShowUpload(true)} className="cursor-pointer" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 8, border: "1px solid var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-fg-secondary)", fontSize: 13, fontFamily: "var(--font-body)" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface-hover)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface)"; }}>
-                      <Upload size={14} />
-                      Upload PDF for Review
-                    </button>
-                  </div>
-                )}
                 <div ref={messagesEndRef} />
               </div>
             </div>
             <div style={{ flexShrink: 0, padding: "8px 20px 16px", backgroundColor: "var(--color-bg)" }}>
               <div style={{ maxWidth: 800, margin: "0 auto" }}>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 8, border: "1px solid var(--color-border)", borderRadius: 12, backgroundColor: "var(--color-surface)", padding: "8px 12px" }}>
-                  <button onClick={() => setShowUpload(true)} disabled={isLoading} className="flex-shrink-0 flex items-center justify-center rounded-full cursor-pointer" style={{ width: 30, height: 30, backgroundColor: "transparent", border: "none", color: "var(--color-fg-tertiary)", opacity: isLoading ? 0.4 : 1 }}
-                    onMouseEnter={(e) => { if (!isLoading) { e.currentTarget.style.color = "var(--color-fg)"; e.currentTarget.style.backgroundColor = "var(--color-surface-hover)"; } }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-fg-tertiary)"; e.currentTarget.style.backgroundColor = "transparent"; }}
-                    title="Upload PDF for compliance review">
-                    <Paperclip size={15} />
-                  </button>
-                  <input ref={fileInputRef} type="file" accept=".pdf" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); e.target.value = ""; }} style={{ display: "none" }} />
-                  <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
-                    onInput={() => { const t = textareaRef.current; if (t) { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 120) + "px"; } }}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleSend(); } }}
-                    placeholder="Ask about MAS compliance or upload a document for review..."
-                    rows={1} style={{ flex: 1, resize: "none", backgroundColor: "transparent", fontSize: 14, lineHeight: 1.6, outline: "none", border: "none", color: "var(--color-fg)", minHeight: 34, padding: "5px 0", fontFamily: "var(--font-body)" }} />
-                  <button onClick={handleSend} disabled={!input.trim() || isLoading} className="flex-shrink-0 flex items-center justify-center rounded-full text-white cursor-pointer" style={{ width: 30, height: 30, backgroundColor: "var(--color-accent)", border: "none", opacity: input.trim() && !isLoading ? 1 : 0.4 }}>
-                    <ArrowUp size={14} />
-                  </button>
-                </div>
+                <ChatInputBar
+                  value={input}
+                  onChange={setInput}
+                  onSend={handleSend}
+                  onUploadClick={() => setShowUpload(true)}
+                  onFilePicked={handleFileUpload}
+                  isLoading={isLoading}
+                  placeholder="Ask about MAS compliance or upload a document for review..."
+                />
               </div>
             </div>
           </>
         ) : (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-fg-tertiary)" }}>
-            <p style={{ fontSize: 14 }}>Select or create a conversation</p>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 20px", gap: 28 }}>
+            <div style={{ textAlign: "center", maxWidth: 620 }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
+                <span style={{ width: 56, height: 56, borderRadius: 14, backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Shield size={26} style={{ color: "var(--color-accent)" }} />
+                </span>
+              </div>
+              <h1 style={{ fontSize: 28, fontWeight: 600, color: "var(--color-fg)", fontFamily: "var(--font-display)", lineHeight: 1.2, marginBottom: 10 }}>
+                How can I help with MAS compliance?
+              </h1>
+              <p style={{ fontSize: 14, color: "var(--color-fg-secondary)", lineHeight: 1.6 }}>
+                Ask a question or attach a factsheet for a full compliance review.
+              </p>
+            </div>
+            <div style={{ width: "100%", maxWidth: 720 }}>
+              <ChatInputBar
+                value={input}
+                onChange={setInput}
+                onSend={handleSend}
+                onUploadClick={() => setShowUpload(true)}
+                onFilePicked={handleFileUpload}
+                isLoading={isLoading}
+                placeholder="Ask anything about MAS compliance, or attach a PDF..."
+                autoFocus
+                large
+              />
+            </div>
           </div>
         )}
       </div>

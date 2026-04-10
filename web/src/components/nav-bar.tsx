@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Sun, Moon, Shield } from "lucide-react";
 
 export function NavBar() {
-  const [dark, setDark] = useState(true);
+  const [dark, setDark] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
