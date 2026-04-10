@@ -9,7 +9,6 @@ import {
   ArrowRight,
   Star,
   Plus,
-  Mic,
   CheckCircle2,
   Search,
   Globe,
@@ -28,6 +27,7 @@ import {
   X,
   PanelLeftClose,
   PanelLeft,
+  Paperclip,
 } from "lucide-react";
 import type {
   ComplianceMessage,
@@ -136,43 +136,81 @@ function AttachmentCard({ attachment }: { attachment: AttachmentData }) {
 
 
 // ── Findings grid ───────────────────────────────────────────────────
-function FindingsTable({ findings }: { findings: FindingData[] }) {
+function FindingsTable({ findings, citations }: { findings: FindingData[]; citations?: CitationData[] }) {
+  const [activeCitations, setActiveCitations] = useState<CitationData[] | null>(null);
   const cfg: Record<string, { icon: typeof AlertCircle; label: string; color: string; bg: string }> = {
     critical: { icon: XCircle, label: "Critical", color: "var(--color-critical)", bg: "var(--color-critical-bg)" },
     warning: { icon: AlertTriangle, label: "Warning", color: "var(--color-warning)", bg: "var(--color-warning-bg)" },
     pass: { icon: CheckCircle, label: "Pass", color: "var(--color-pass)", bg: "var(--color-pass-bg)" },
   };
+
+  const findMatchingCitations = (finding: FindingData): CitationData[] => {
+    if (!citations || citations.length === 0) return [];
+    // Match by regulation keyword overlap
+    const regWords = finding.regulation.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 2);
+    return citations.filter((c) => {
+      const src = c.source.toLowerCase();
+      return regWords.some((w) => src.includes(w));
+    });
+  };
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, margin: "8px 0" }}>
-      {findings.map((f, i) => { const c = cfg[f.severity]; const Icon = c.icon; return (
-        <div key={i} style={{ padding: "12px 14px", border: "1px solid var(--color-border)", borderRadius: 10, backgroundColor: "var(--color-surface)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 999, backgroundColor: c.bg, color: c.color, fontSize: 10, fontWeight: 700, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0 }}><Icon size={10} />{c.label}</span>
-            <span style={{ fontSize: 10, color: "var(--color-fg-tertiary)", fontFamily: "var(--font-mono)" }}>{f.regulation}</span>
+    <>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, margin: "8px 0" }}>
+        {findings.map((f, i) => { const c = cfg[f.severity]; const Icon = c.icon; const matched = findMatchingCitations(f); return (
+          <div key={i} style={{ padding: "12px 14px", border: "1px solid var(--color-border)", borderRadius: 10, backgroundColor: "var(--color-surface)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 999, backgroundColor: c.bg, color: c.color, fontSize: 10, fontWeight: 700, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0 }}><Icon size={10} />{c.label}</span>
+              <span style={{ fontSize: 10, color: "var(--color-fg-tertiary)", fontFamily: "var(--font-mono)" }}>{f.regulation}</span>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--color-fg)", lineHeight: "18px", marginBottom: 4 }}>{f.issue}</div>
+            <div style={{ fontSize: 12, color: "var(--color-fg-secondary)", lineHeight: 1.6, marginBottom: matched.length > 0 ? 8 : 0 }}>{f.recommendation}</div>
+            {matched.length > 0 && (
+              <button
+                onClick={() => setActiveCitations(matched)}
+                className="cursor-pointer"
+                style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 6, border: "1px solid var(--color-border)", backgroundColor: "var(--color-surface-hover)", color: "var(--color-accent)", fontSize: 11, fontWeight: 500, fontFamily: "var(--font-mono)" }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--color-accent)"; e.currentTarget.style.color = "white"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface-hover)"; e.currentTarget.style.color = "var(--color-accent)"; }}
+              >
+                <BookOpen size={11} />
+                View Regulation
+              </button>
+            )}
           </div>
-          <div style={{ fontSize: 13, fontWeight: 500, color: "var(--color-fg)", lineHeight: "18px", marginBottom: 4 }}>{f.issue}</div>
-          <div style={{ fontSize: 12, color: "var(--color-fg-tertiary)", lineHeight: "16px" }}>{f.recommendation}</div>
-        </div>
-      ); })}
-    </div>
+        ); })}
+      </div>
+      {activeCitations && <CitationModal citations={activeCitations} onClose={() => setActiveCitations(null)} />}
+    </>
   );
 }
 
-// ── Citation block ──────────────────────────────────────────────────
-function CitationBlock({ citation }: { citation: CitationData }) {
+// ── Citation modal ─────────────────────────────────────────────────
+function CitationModal({ citations, onClose }: { citations: CitationData[]; onClose: () => void }) {
   return (
-    <div style={{ borderLeft: "3px solid var(--color-accent)", padding: "12px 14px", margin: "10px 0", backgroundColor: "var(--color-surface)", borderRadius: "0 8px 8px 0" }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-        <BookOpen size={14} style={{ flexShrink: 0, marginTop: 2, color: "var(--color-accent)" }} />
-        <div>
-          <p style={{ fontSize: 12, lineHeight: 1.6, color: "var(--color-fg-secondary)", fontStyle: "italic" }}>&ldquo;{citation.text}&rdquo;</p>
-          <p style={{ fontSize: 11, fontWeight: 600, color: "var(--color-accent)", marginTop: 6, fontFamily: "var(--font-mono)" }}>{citation.source}</p>
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={onClose}>
+      <div className="animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ width: 560, maxHeight: "80vh", overflow: "auto", backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 16, padding: 0, position: "relative" }}>
+        <div style={{ position: "sticky", top: 0, zIndex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--color-border)", backgroundColor: "var(--color-bg)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <BookOpen size={16} style={{ color: "var(--color-accent)" }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--color-fg)", fontFamily: "var(--font-display)" }}>Regulatory References</span>
+          </div>
+          <button onClick={onClose} className="cursor-pointer" style={{ background: "none", border: "none", color: "var(--color-fg-tertiary)", padding: 4 }}>
+            <X size={16} />
+          </button>
+        </div>
+        <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+          {citations.map((citation, i) => (
+            <div key={i} style={{ borderLeft: "3px solid var(--color-accent)", padding: "14px 16px", backgroundColor: "var(--color-surface)", borderRadius: "0 10px 10px 0" }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: "var(--color-accent)", marginBottom: 10, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{citation.source}</p>
+              <p style={{ fontSize: 13, lineHeight: 1.8, color: "var(--color-fg)", fontStyle: "italic" }}>&ldquo;{citation.text}&rdquo;</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
-
 
 // ── Report progress card ────────────────────────────────────────────
 function ReportProgressCard({ data }: { data: ReportProgressData }) {
@@ -216,7 +254,7 @@ function ReportProgressCard({ data }: { data: ReportProgressData }) {
 }
 
 // ── Block renderer ──────────────────────────────────────────────────
-function RenderBlock({ block }: { block: ComplianceMessageBlock }) {
+function RenderBlock({ block, citations }: { block: ComplianceMessageBlock; citations?: CitationData[] }) {
   switch (block.type) {
     case "text": return <p style={{ fontSize: 14, lineHeight: 1.7 }}>{renderInlineBold(block.content || "")}</p>;
     case "heading":
@@ -236,8 +274,8 @@ function RenderBlock({ block }: { block: ComplianceMessageBlock }) {
       );
     case "thinking": return block.thinking ? <ThinkingCard thinking={block.thinking} /> : null;
     case "attachment": return block.attachment ? <AttachmentCard attachment={block.attachment} /> : null;
-    case "findings": return block.findings ? <FindingsTable findings={block.findings} /> : null;
-    case "citation": return block.citation ? <CitationBlock citation={block.citation} /> : null;
+    case "findings": return block.findings ? <FindingsTable findings={block.findings} citations={citations} /> : null;
+    case "citation": return null; // Citations are now shown as popups in findings
     case "checklist":
       if (!block.checklist) return null;
       return (
@@ -331,6 +369,11 @@ function ChatMessage({ message, onFollowUp }: { message: ComplianceMessage; onFo
       </div>
     );
   }
+  // Collect all citations from this message for passing to findings
+  const messageCitations = message.blocks
+    .filter((b) => b.type === "citation" && b.citation)
+    .map((b) => b.citation!);
+
   return (
     <div className="flex justify-start">
       <div style={{ maxWidth: "100%" }}>
@@ -339,7 +382,7 @@ function ChatMessage({ message, onFollowUp }: { message: ComplianceMessage; onFo
           <span style={{ fontSize: 10, fontWeight: 700, color: "var(--color-fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "var(--font-mono)" }}>CosX Compliance</span>
         </div>
         <div className="space-y-1" style={{ color: "var(--color-fg)" }}>
-          {message.blocks.filter((b) => b.type !== "status" && b.type !== "checklist").map((block, i) => <RenderBlock key={i} block={block} />)}
+          {message.blocks.filter((b) => b.type !== "status" && b.type !== "checklist").map((block, i) => <RenderBlock key={i} block={block} citations={messageCitations} />)}
         </div>
         {message.showStatus && <StatusBar />}
         {message.suggestedFollowUps && message.suggestedFollowUps.length > 0 && <FollowUps items={message.suggestedFollowUps} onSelect={onFollowUp} />}
@@ -403,7 +446,6 @@ function UploadOverlay({ onClose, onUpload }: { onClose: () => void; onUpload: (
 export default function ComplianceDemoPage() {
   const [sessions, setSessions] = useState<ConversationSession[]>(demoSessions);
   const [activeId, setActiveId] = useState<string>(demoSessions[0].id);
-  const [showNewMenu, setShowNewMenu] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [input, setInput] = useState("");
   const [leftCollapsed, setLeftCollapsed] = useState(false);
@@ -411,7 +453,7 @@ export default function ComplianceDemoPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const newMenuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const activeSession = sessions.find((s) => s.id === activeId);
 
@@ -458,36 +500,23 @@ export default function ComplianceDemoPage() {
     } catch { /* ignore load errors */ }
   }, []);
 
-  // Close new menu on outside click
-  useEffect(() => {
-    if (!showNewMenu) return;
-    const handler = (e: MouseEvent) => {
-      if (newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) setShowNewMenu(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [showNewMenu]);
-
-  const createQASession = useCallback(async () => {
-    setShowNewMenu(false);
+  const createSession = useCallback(async () => {
     try {
-      const conv = await createConversation("New Q&A", "qa");
+      const conv = await createConversation("New Conversation", "qa");
       const newSession: ConversationSession = { id: conv.id, type: "qa", title: conv.title, createdAt: conv.created_at, messages: [] };
       setSessions((prev) => [newSession, ...prev]);
       setActiveId(conv.id);
     } catch {
-      // Fallback to local-only session if backend is down
-      const id = `s-qa-${Date.now()}`;
-      const newSession: ConversationSession = { id, type: "qa", title: "New Q&A", createdAt: new Date().toISOString(), messages: [] };
+      const id = `s-${Date.now()}`;
+      const newSession: ConversationSession = { id, type: "qa", title: "New Conversation", createdAt: new Date().toISOString(), messages: [] };
       setSessions((prev) => [newSession, ...prev]);
       setActiveId(id);
     }
     setTimeout(() => textareaRef.current?.focus(), 100);
   }, []);
 
-  const createReviewSession = useCallback(async (file?: File) => {
+  const handleFileUpload = useCallback(async (file?: File) => {
     setShowUpload(false);
-    setShowNewMenu(false);
 
     // No file → use demo mock data
     if (!file) {
@@ -502,19 +531,42 @@ export default function ComplianceDemoPage() {
       return;
     }
 
-    // Real file upload
+    const fileSize = file.size < 1024 * 1024
+      ? `${(file.size / 1024).toFixed(0)} KB`
+      : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+    const userMsg: ComplianceMessage = {
+      id: Date.now().toString(), role: "user",
+      blocks: [{
+        type: "attachment",
+        attachment: { filename: file.name, filesize: fileSize, filetype: "pdf", status: "uploaded" },
+      }],
+    };
+
+    // If current session exists and is persisted, upload into it
+    const currentId = activeId;
+    const isPersistedSession = currentId && !currentId.startsWith("s-");
+
+    if (isPersistedSession) {
+      setSessions((prev) => prev.map((s) => s.id === currentId ? { ...s, messages: [...s.messages, userMsg], type: "review" } : s));
+      setIsLoading(true);
+      try {
+        const aiMsg = await uploadReview(file, currentId);
+        setSessions((prev) => prev.map((s) => s.id === currentId ? { ...s, messages: [...s.messages, aiMsg] } : s));
+      } catch (err) {
+        const errMsg: ComplianceMessage = {
+          id: `err-${Date.now()}`, role: "ai",
+          blocks: [{ type: "text", content: `Review failed: ${err instanceof Error ? err.message : "Unknown error"}` }],
+        };
+        setSessions((prev) => prev.map((s) => s.id === currentId ? { ...s, messages: [...s.messages, errMsg] } : s));
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // Create a new session for the upload
     try {
       const conv = await createConversation(file.name, "review");
-      const fileSize = file.size < 1024 * 1024
-        ? `${(file.size / 1024).toFixed(0)} KB`
-        : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
-      const userMsg: ComplianceMessage = {
-        id: Date.now().toString(), role: "user",
-        blocks: [{
-          type: "attachment",
-          attachment: { filename: file.name, filesize: fileSize, filetype: "pdf", status: "uploaded" },
-        }],
-      };
       const newSession: ConversationSession = {
         id: conv.id, type: "review", title: file.name, createdAt: conv.created_at,
         messages: [userMsg],
@@ -541,7 +593,7 @@ export default function ComplianceDemoPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeId]);
 
   const sendQuestion = useCallback(async (question: string) => {
     if (!activeId) return;
@@ -586,27 +638,11 @@ export default function ComplianceDemoPage() {
         {/* Header */}
         <div style={{ padding: leftCollapsed ? "14px 10px 10px" : "14px 14px 10px", display: "flex", alignItems: "center", justifyContent: leftCollapsed ? "center" : "space-between" }}>
           {!leftCollapsed && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--color-fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "var(--font-mono)" }}>Conversations</span>}
-          <div style={{ position: "relative" }} ref={newMenuRef}>
-            <button onClick={() => setShowNewMenu((v) => !v)} className="cursor-pointer" style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-fg-secondary)", display: "flex", alignItems: "center", justifyContent: "center" }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface-hover)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface)"; }}>
-              <Plus size={14} />
-            </button>
-            {showNewMenu && (
-              <div className="animate-fade-in" style={{ position: "absolute", top: 34, right: 0, width: 180, backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 10, padding: 4, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 10 }}>
-                <button onClick={createQASession} className="w-full cursor-pointer" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 7, border: "none", backgroundColor: "transparent", color: "var(--color-fg)", fontSize: 13, fontFamily: "var(--font-body)", textAlign: "left" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface-hover)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}>
-                  <MessageSquare size={14} style={{ color: "var(--color-fg-tertiary)" }} />New Q&A
-                </button>
-                <button onClick={() => { setShowNewMenu(false); setShowUpload(true); }} className="w-full cursor-pointer" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 7, border: "none", backgroundColor: "transparent", color: "var(--color-fg)", fontSize: 13, fontFamily: "var(--font-body)", textAlign: "left" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface-hover)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}>
-                  <FileText size={14} style={{ color: "var(--color-fg-tertiary)" }} />New Review
-                </button>
-              </div>
-            )}
-          </div>
+          <button onClick={createSession} className="cursor-pointer" style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-fg-secondary)", display: "flex", alignItems: "center", justifyContent: "center" }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface-hover)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface)"; }}>
+            <Plus size={14} />
+          </button>
         </div>
 
         {/* Session cards */}
@@ -618,14 +654,14 @@ export default function ComplianceDemoPage() {
                 <button key={s.id} onClick={() => { setActiveId(s.id); loadConversationMessages(s.id); if (leftCollapsed) return; }} className="w-full text-left cursor-pointer" style={{ display: "flex", alignItems: "center", gap: leftCollapsed ? 0 : 10, padding: leftCollapsed ? "8px 0" : "10px 10px", borderRadius: 8, border: "none", backgroundColor: isActive ? "var(--color-surface-hover)" : "transparent", color: "var(--color-fg)", fontFamily: "var(--font-body)", transition: "background-color 100ms ease", justifyContent: leftCollapsed ? "center" : "flex-start" }}
                   onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = "var(--color-surface)"; }}
                   onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = "transparent"; }}>
-                  <span style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: s.type === "review" ? "var(--color-info-bg)" : "var(--color-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    {s.type === "review" ? <FileText size={13} style={{ color: "var(--color-info)" }} /> : <MessageSquare size={13} style={{ color: "var(--color-fg-tertiary)" }} />}
+                  <span style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: "var(--color-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <MessageSquare size={13} style={{ color: "var(--color-fg-tertiary)" }} />
                   </span>
                   {!leftCollapsed && (
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.title}</div>
                       <div style={{ fontSize: 10, color: "var(--color-fg-tertiary)", fontFamily: "var(--font-mono)", marginTop: 1 }}>
-                        {s.type === "review" ? "Review" : "Q&A"} &middot; {s.messages.length} msgs
+                        {s.messages.length} msgs
                       </div>
                     </div>
                   )}
@@ -669,9 +705,15 @@ export default function ComplianceDemoPage() {
                   </div>
                 )}
                 {activeSession.messages.length === 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: 120, gap: 12, color: "var(--color-fg-tertiary)" }}>
-                    <MessageSquare size={28} style={{ opacity: 0.3 }} />
-                    <p style={{ fontSize: 14 }}>Ask a compliance question to get started</p>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: 120, gap: 16, color: "var(--color-fg-tertiary)" }}>
+                    <Shield size={32} style={{ opacity: 0.3 }} />
+                    <p style={{ fontSize: 14 }}>Ask a compliance question or upload a document for review</p>
+                    <button onClick={() => setShowUpload(true)} className="cursor-pointer" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 8, border: "1px solid var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-fg-secondary)", fontSize: 13, fontFamily: "var(--font-body)" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface-hover)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface)"; }}>
+                      <Upload size={14} />
+                      Upload PDF for Review
+                    </button>
                   </div>
                 )}
                 <div ref={messagesEndRef} />
@@ -680,16 +722,18 @@ export default function ComplianceDemoPage() {
             <div style={{ flexShrink: 0, padding: "8px 20px 16px", backgroundColor: "var(--color-bg)" }}>
               <div style={{ maxWidth: 800, margin: "0 auto" }}>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 8, border: "1px solid var(--color-border)", borderRadius: 12, backgroundColor: "var(--color-surface)", padding: "8px 12px" }}>
+                  <button onClick={() => setShowUpload(true)} disabled={isLoading} className="flex-shrink-0 flex items-center justify-center rounded-full cursor-pointer" style={{ width: 30, height: 30, backgroundColor: "transparent", border: "none", color: "var(--color-fg-tertiary)", opacity: isLoading ? 0.4 : 1 }}
+                    onMouseEnter={(e) => { if (!isLoading) { e.currentTarget.style.color = "var(--color-fg)"; e.currentTarget.style.backgroundColor = "var(--color-surface-hover)"; } }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-fg-tertiary)"; e.currentTarget.style.backgroundColor = "transparent"; }}
+                    title="Upload PDF for compliance review">
+                    <Paperclip size={15} />
+                  </button>
+                  <input ref={fileInputRef} type="file" accept=".pdf" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); e.target.value = ""; }} style={{ display: "none" }} />
                   <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
                     onInput={() => { const t = textareaRef.current; if (t) { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 120) + "px"; } }}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleSend(); } }}
-                    placeholder={activeSession.type === "review" ? "Ask a follow-up about this review..." : "Ask about MAS compliance requirements..."}
+                    placeholder="Ask about MAS compliance or upload a document for review..."
                     rows={1} style={{ flex: 1, resize: "none", backgroundColor: "transparent", fontSize: 14, lineHeight: 1.6, outline: "none", border: "none", color: "var(--color-fg)", minHeight: 34, padding: "5px 0", fontFamily: "var(--font-body)" }} />
-                  <button className="flex-shrink-0 flex items-center justify-center rounded-full cursor-pointer" style={{ width: 30, height: 30, backgroundColor: "transparent", border: "none", color: "var(--color-fg-tertiary)" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-fg)"; e.currentTarget.style.backgroundColor = "var(--color-surface-hover)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-fg-tertiary)"; e.currentTarget.style.backgroundColor = "transparent"; }}>
-                    <Mic size={14} />
-                  </button>
                   <button onClick={handleSend} disabled={!input.trim() || isLoading} className="flex-shrink-0 flex items-center justify-center rounded-full text-white cursor-pointer" style={{ width: 30, height: 30, backgroundColor: "var(--color-accent)", border: "none", opacity: input.trim() && !isLoading ? 1 : 0.4 }}>
                     <ArrowUp size={14} />
                   </button>
@@ -707,7 +751,7 @@ export default function ComplianceDemoPage() {
       {/* Right panel removed — chat flow contains all necessary info */}
 
       {/* ── Upload overlay ─────────────────────────────────────────── */}
-      {showUpload && <UploadOverlay onClose={() => setShowUpload(false)} onUpload={createReviewSession} />}
+      {showUpload && <UploadOverlay onClose={() => setShowUpload(false)} onUpload={handleFileUpload} />}
     </div>
   );
 }
