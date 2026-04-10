@@ -542,7 +542,8 @@ function UploadOverlay({ onClose, onUpload }: { onClose: () => void; onUpload: (
 // ── Main page ───────────────────────────────────────────────────────
 export default function ComplianceDemoPage() {
   const [sessions, setSessions] = useState<ConversationSession[]>(demoSessions);
-  const [activeId, setActiveId] = useState<string | null>(demoSessions[0].id);
+  // Default to the landing page (no active session) on mount
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [input, setInput] = useState("");
   const [leftCollapsed, setLeftCollapsed] = useState(false);
@@ -558,7 +559,7 @@ export default function ComplianceDemoPage() {
 
   useEffect(() => { scrollToBottom(); }, [activeSession?.messages.length, scrollToBottom]);
 
-  // Load persisted conversations from backend on mount
+  // Load persisted conversations from backend on mount — landing page stays active
   useEffect(() => {
     apiListConversations()
       .then((list) => {
@@ -571,7 +572,6 @@ export default function ComplianceDemoPage() {
             messages: [], // lazy-loaded when selected
           }));
           setSessions([...loaded, ...demoSessions]);
-          setActiveId(loaded[0].id);
         }
       })
       .catch(() => { /* backend offline — keep demo sessions */ });
